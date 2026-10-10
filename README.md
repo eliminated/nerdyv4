@@ -1,5 +1,7 @@
 # NERDY APP DOCUMENTATION
 
+[![CI](https://github.com/eliminated/nerdyv4/actions/workflows/ci.yml/badge.svg)](https://github.com/eliminated/nerdyv4/actions/workflows/ci.yml)
+
 > A study companion app that helps learners to plan, execute and achieve effectively with minimal or no distractions to prevent them from striving.
 
 **TITLE**: INTRODUCING NERDY, YOUR NEW STUDY ASSISTANT FOR NEW ENDEVOUR.
