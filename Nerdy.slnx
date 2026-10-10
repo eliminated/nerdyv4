@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Nerdy.Api/Nerdy.Api.csproj" />
+    <!-- The self-contained Windows App SDK needs a real architecture, so "Any CPU" solution builds use x64. -->
+    <Project Path="src/Nerdy.App/Nerdy.App.csproj">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="src/Nerdy.Contracts/Nerdy.Contracts.csproj" />
+    <Project Path="src/Nerdy.Core/Nerdy.Core.csproj" />
+    <Project Path="src/Nerdy.Focus/Nerdy.Focus.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Nerdy.Api.Tests/Nerdy.Api.Tests.csproj" />
+    <Project Path="tests/Nerdy.Core.Tests/Nerdy.Core.Tests.csproj" />
+    <Project Path="tests/Nerdy.Focus.Tests/Nerdy.Focus.Tests.csproj" />
+  </Folder>
+</Solution>

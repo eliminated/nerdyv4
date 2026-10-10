@@ -1,0 +1,710 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="Nerdy.App.Views.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:fi="using:FluentIcons.WinUI"
+    xmlns:tk="using:CommunityToolkit.WinUI.Controls"
+    xmlns:controls="using:Nerdy.App.Controls"
+    xmlns:vm="using:Nerdy.App.ViewModels"
+    xmlns:h="using:Nerdy.App.Helpers">
+
+    <Page.Resources>
+        <Style x:Key="SettingRowStyle" TargetType="Border">
+            <Setter Property="Background" Value="{ThemeResource NerdyCardBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{ThemeResource NerdyCardBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="18,16" />
+        </Style>
+        <Style x:Key="SettingIconStyle" TargetType="fi:SymbolIcon">
+            <Setter Property="FontSize" Value="20" />
+            <Setter Property="Foreground" Value="{ThemeResource NerdyTextSecondaryBrush}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="SettingTitleStyle" TargetType="TextBlock" BasedOn="{StaticResource NerdyTextBase}">
+            <Setter Property="FontWeight" Value="Medium" />
+        </Style>
+    </Page.Resources>
+
+    <ScrollViewer x:Name="Scroller" Padding="28,22,28,40">
+        <StackPanel MaxWidth="880" HorizontalAlignment="Left" Width="880" Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,10">
+                <TextBlock Text="Settings" FontSize="24" FontWeight="SemiBold" Foreground="{ThemeResource NerdyTextSecondaryBrush}" />
+                <fi:SymbolIcon Symbol="ChevronRight" FontSize="16" Foreground="{ThemeResource NerdyTextSecondaryBrush}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                <TextBlock Text="{x:Bind ViewModel.TabTitle, Mode=OneWay}" FontSize="24" FontWeight="SemiBold" Style="{StaticResource NerdyTextBase}" />
+            </StackPanel>
+            <Border Style="{StaticResource NerdySegmentTrackStyle}" CornerRadius="10" Margin="0,0,0,14">
+                <ItemsControl ItemsSource="{x:Bind ViewModel.Tabs}" ItemTemplate="{StaticResource NerdySegmentTemplate}" ItemsPanel="{StaticResource NerdyHorizontalPanel}" IsTabStop="False" />
+            </Border>
+
+            <!-- ===================== Personalization ===================== -->
+            <StackPanel Spacing="6" Visibility="{x:Bind ViewModel.IsPersonalization, Mode=OneWay}">
+                <Border Style="{StaticResource SettingRowStyle}">
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <fi:SymbolIcon Symbol="DarkTheme" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Theme" Style="{StaticResource SettingTitleStyle}" />
+                            <TextBlock Text="Follow Windows, or always use light or dark" Style="{StaticResource NerdyCaptionStyle}" />
+                        </StackPanel>
+                        <Border Grid.Column="2" Style="{StaticResource NerdySegmentTrackStyle}" CornerRadius="10">
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.ThemeSegments}" ItemTemplate="{StaticResource NerdySegmentTemplate}" ItemsPanel="{StaticResource NerdyHorizontalPanel}" IsTabStop="False" />
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource SettingRowStyle}">
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <fi:SymbolIcon Symbol="LayoutRowTwo" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Home layout" Style="{StaticResource SettingTitleStyle}" />
+                            <TextBlock Text="Dashboard of cards, or a timeline-first agenda" Style="{StaticResource NerdyCaptionStyle}" />
+                        </StackPanel>
+                        <Border Grid.Column="2" Style="{StaticResource NerdySegmentTrackStyle}" CornerRadius="10">
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.LayoutSegments}" ItemTemplate="{StaticResource NerdySegmentTemplate}" ItemsPanel="{StaticResource NerdyHorizontalPanel}" IsTabStop="False" />
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource SettingRowStyle}">
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <fi:SymbolIcon Symbol="Color" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Accent color" Style="{StaticResource SettingTitleStyle}" />
+                            <TextBlock Text="Buttons, highlights and the focus ring" Style="{StaticResource NerdyCaptionStyle}" />
+                        </StackPanel>
+                        <ItemsControl Grid.Column="2" ItemsSource="{x:Bind ViewModel.Swatches}" IsTabStop="False" VerticalAlignment="Center">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="6" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:SwatchItem">
+                                    <Button Style="{StaticResource PlainButtonStyle}" Width="34" Height="34" CornerRadius="17" Padding="0"
+                                            Command="{x:Bind PickCommand}" AutomationProperties.Name="{x:Bind Hex}" ToolTipService.ToolTip="{x:Bind Hex}">
+                                        <Border Width="34" Height="34" CornerRadius="17" BorderThickness="2" BorderBrush="{x:Bind Ring}" Padding="2">
+                                            <Ellipse Fill="{x:Bind Fill}" />
+                                        </Border>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource SettingRowStyle}">
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <fi:SymbolIcon Symbol="Sparkle" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Selection indicator" Style="{StaticResource SettingTitleStyle}" />
+                            <TextBlock Text="How the current page is highlighted in the sidebar" Style="{StaticResource NerdyCaptionStyle}" />
+                        </StackPanel>
+                        <Border Grid.Column="2" Style="{StaticResource NerdySegmentTrackStyle}" CornerRadius="10">
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.IndicatorSegments}" ItemTemplate="{StaticResource NerdySegmentTemplate}" ItemsPanel="{StaticResource NerdyHorizontalPanel}" IsTabStop="False" />
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource SettingRowStyle}" Visibility="{x:Bind ViewModel.ShowOrbitOptions, Mode=OneWay}">
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <fi:SymbolIcon Symbol="Color" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Indicator colors" Style="{StaticResource SettingTitleStyle}" />
+                            <TextBlock Text="Palette for the Aura and Horizon effects" Style="{StaticResource NerdyCaptionStyle}" />
+                        </StackPanel>
+                        <ItemsControl Grid.Column="2" ItemsSource="{x:Bind ViewModel.OrbitOptions}" IsTabStop="False" VerticalAlignment="Center">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="8" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:OrbitOption">
+                                    <Button Style="{StaticResource PlainButtonStyle}" Height="32" CornerRadius="16" Padding="6,0,12,0" BorderThickness="1"
+                                            BorderBrush="{x:Bind Border}" Background="{x:Bind Background}" Command="{x:Bind PickCommand}" AutomationProperties.Name="{x:Bind Label}">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Ellipse Width="20" Height="20" Fill="{x:Bind Swatch}" />
+                                            <TextBlock Text="{x:Bind Label}" FontSize="13" FontWeight="Medium" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource SettingRowStyle}">
+                    <StackPanel>
+                        <Grid ColumnSpacing="16" Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition />
+                            </Grid.ColumnDefinitions>
+                            <fi:SymbolIcon Symbol="TextFont" Style="{StaticResource SettingIconStyle}" />
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="App font" Style="{StaticResource SettingTitleStyle}" />
+                                <TextBlock Text="Atkinson Hyperlegible and Lexend are designed for easier reading" Style="{StaticResource NerdyCaptionStyle}" />
+                            </StackPanel>
+                        </Grid>
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.FontOptions}" Margin="36,0,0,0" IsTabStop="False">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <tk:UniformGrid Columns="4" ColumnSpacing="10" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:FontOption">
+                                    <Button Style="{StaticResource PlainButtonStyle}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="14,12" CornerRadius="10"
+                                            BorderThickness="2" BorderBrush="{x:Bind Border}" Background="{x:Bind Background}" Opacity="{x:Bind ItemOpacity}"
+                                            IsEnabled="{x:Bind IsAvailable}" Command="{x:Bind PickCommand}" AutomationProperties.Name="{x:Bind Label}">
+                                        <StackPanel>
+                                            <TextBlock Text="Aa" FontFamily="{x:Bind Family}" FontSize="24" FontWeight="SemiBold" />
+                                            <TextBlock Text="{x:Bind Label}" Style="{StaticResource NerdyCaptionStyle}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{x:Bind Detail}" FontSize="11" Foreground="{ThemeResource NerdyTextTertiaryBrush}" Visibility="{x:Bind h:B.Collapsed(IsAvailable)}" />
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource SettingRowStyle}">
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <fi:SymbolIcon Symbol="TextLineSpacing" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Density" Style="{StaticResource SettingTitleStyle}" />
+                            <TextBlock Text="Spacing in lists and navigation" Style="{StaticResource NerdyCaptionStyle}" />
+                        </StackPanel>
+                        <Border Grid.Column="2" Style="{StaticResource NerdySegmentTrackStyle}" CornerRadius="10">
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.DensitySegments}" ItemTemplate="{StaticResource NerdySegmentTemplate}" ItemsPanel="{StaticResource NerdyHorizontalPanel}" IsTabStop="False" />
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource SettingRowStyle}">
+                    <StackPanel>
+                        <Grid ColumnSpacing="16" Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition />
+                            </Grid.ColumnDefinitions>
+                            <fi:SymbolIcon Symbol="Image" Style="{StaticResource SettingIconStyle}" />
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="Focus wallpaper" Style="{StaticResource SettingTitleStyle}" />
+                                <TextBlock Text="Shown behind the timer during Focus sessions" Style="{StaticResource NerdyCaptionStyle}" />
+                            </StackPanel>
+                        </Grid>
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.WallpaperOptions}" Margin="36,0,0,0" IsTabStop="False">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <tk:UniformGrid Columns="4" ColumnSpacing="10" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:WallpaperItem">
+                                    <Button Style="{StaticResource PlainButtonStyle}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                            Command="{x:Bind PickCommand}" AutomationProperties.Name="{x:Bind Label}">
+                                        <StackPanel Spacing="6">
+                                            <Border Height="76" CornerRadius="10" BorderThickness="2" BorderBrush="{x:Bind Ring}">
+                                                <controls:WallpaperBackground Wallpaper="{x:Bind Id}" CornerRadius="8" />
+                                            </Border>
+                                            <TextBlock Text="{x:Bind Label}" Style="{StaticResource NerdyCaptionStyle}" />
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <Grid ColumnSpacing="6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <Border Style="{StaticResource SettingRowStyle}">
+                        <StackPanel>
+                            <TextBlock Text="Sidebar order" Style="{StaticResource SettingTitleStyle}" />
+                            <TextBlock Text="Move the pages you use most to the top" Style="{StaticResource NerdyCaptionStyle}" Margin="0,0,0,10" />
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.NavRows}" IsTabStop="False">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:NavOrderRow">
+                                        <Grid ColumnSpacing="10" Padding="4,5">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <fi:SymbolIcon Symbol="{x:Bind Icon}" FontSize="20" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="1" Text="{x:Bind Label}" VerticalAlignment="Center" Style="{StaticResource NerdyTextBase}" />
+                                            <Button Grid.Column="2" Style="{StaticResource NerdyIconButtonStyle}" Width="28" Height="28" Opacity="{x:Bind UpOpacity}"
+                                                    IsEnabled="{x:Bind CanMoveUp}" Command="{x:Bind MoveUpCommand}" AutomationProperties.Name="{x:Bind UpName}" ToolTipService.ToolTip="Move up">
+                                                <fi:SymbolIcon Symbol="ArrowUp" FontSize="16" />
+                                            </Button>
+                                            <Button Grid.Column="3" Style="{StaticResource NerdyIconButtonStyle}" Width="28" Height="28" Opacity="{x:Bind DownOpacity}"
+                                                    IsEnabled="{x:Bind CanMoveDown}" Command="{x:Bind MoveDownCommand}" AutomationProperties.Name="{x:Bind DownName}" ToolTipService.ToolTip="Move down">
+                                                <fi:SymbolIcon Symbol="ArrowDown" FontSize="16" />
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                    <Border x:Name="WidgetsCard" Grid.Column="1" Style="{StaticResource SettingRowStyle}">
+                        <StackPanel>
+                            <TextBlock Text="Home widgets" Style="{StaticResource SettingTitleStyle}" />
+                            <TextBlock Text="Choose what appears on Home" Style="{StaticResource NerdyCaptionStyle}" Margin="0,0,0,6" />
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.WidgetRows}" IsTabStop="False">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:WidgetToggle">
+                                        <Grid Padding="4,2" BorderBrush="{ThemeResource NerdyDividerBrush}" BorderThickness="0,0,0,1">
+                                            <TextBlock Text="{x:Bind Label}" VerticalAlignment="Center" Style="{StaticResource NerdyTextBase}" />
+                                            <ToggleSwitch IsOn="{x:Bind IsOn, Mode=TwoWay}" OnContent="" OffContent="" MinWidth="0" HorizontalAlignment="Right"
+                                                          AutomationProperties.Name="{x:Bind Label}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <Border Style="{StaticResource SettingRowStyle}">
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <fi:SymbolIcon Symbol="Sparkle" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Welcome tour" Style="{StaticResource SettingTitleStyle}" />
+                            <TextBlock Text="Go through setup again" Style="{StaticResource NerdyCaptionStyle}" />
+                        </StackPanel>
+                        <Button Grid.Column="2" Style="{StaticResource NerdyOutlineButtonStyle}" Content="Replay" Command="{x:Bind ViewModel.ReplayTourCommand}" />
+                    </Grid>
+                </Border>
+            </StackPanel>
+
+            <!-- ===================== Focus ===================== -->
+            <StackPanel Spacing="6" Visibility="{x:Bind ViewModel.IsFocus, Mode=OneWay}">
+                <Border Style="{StaticResource SettingRowStyle}">
+                    <StackPanel>
+                        <Grid ColumnSpacing="16" Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition />
+                            </Grid.ColumnDefinitions>
+                            <fi:SymbolIcon Symbol="Apps" Style="{StaticResource SettingIconStyle}" />
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="Apps that aren't allowed" Style="{StaticResource SettingTitleStyle}" />
+                                <TextBlock Text="What happens to other apps during Focus and Ultra-Focus" Style="{StaticResource NerdyCaptionStyle}" />
+                            </StackPanel>
+                        </Grid>
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.BlockedAppCards}" ItemTemplate="{StaticResource NerdyChoiceCardTemplate}" Margin="36,0,0,0" IsTabStop="False">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <tk:UniformGrid Columns="2" ColumnSpacing="10" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource SettingRowStyle}">
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <fi:SymbolIcon Symbol="Sparkle" Style="{StaticResource SettingIconStyle}" VerticalAlignment="Top" Margin="0,2,0,0" />
+                        <StackPanel Grid.Column="1" Spacing="2">
+                            <TextBlock Text="AI review of early Ultra-Focus exits" Style="{StaticResource SettingTitleStyle}" />
+                            <TextBlock Style="{StaticResource NerdyCaptionWrapStyle}"
+                                       Text="When you leave Ultra-Focus early for an urgent school or work matter, or 'something else', your explanation, task name and time left are sent through Nerdy's server to Claude, an AI model made by Anthropic. If it can reasonably wait, Claude suggests staying until the session ends." />
+                            <TextBlock Style="{StaticResource NerdyCaptionWrapStyle}" Margin="0,4,0,0"
+                                       Text="Medical, safety and family emergencies are never sent for AI review. If the review can't run (offline, slow, unavailable), you can always leave." />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="2" IsOn="{x:Bind ViewModel.AiExitReview, Mode=TwoWay}" OnContent="" OffContent="" MinWidth="0" VerticalAlignment="Top"
+                                      AutomationProperties.Name="AI review of early Ultra-Focus exits" />
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource SettingRowStyle}">
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <fi:SymbolIcon Symbol="Timer" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Default session length" Style="{StaticResource SettingTitleStyle}" />
+                            <TextBlock Text="Where the Focus timer starts" Style="{StaticResource NerdyCaptionStyle}" />
+                        </StackPanel>
+                        <ItemsControl Grid.Column="2" ItemsSource="{x:Bind ViewModel.LengthChips}" ItemTemplate="{StaticResource NerdyChipTemplate}"
+                                      ItemsPanel="{StaticResource NerdyHorizontalPanel}" Margin="0,8,-8,0" IsTabStop="False" />
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource SettingRowStyle}">
+                    <StackPanel>
+                        <Grid ColumnSpacing="16" Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <fi:SymbolIcon Symbol="CheckmarkCircle" Style="{StaticResource SettingIconStyle}" />
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="Allowed apps" Style="{StaticResource SettingTitleStyle}" />
+                                <TextBlock Text="Switched-on apps stay usable during a session. Nerdy is always allowed." Style="{StaticResource NerdyCaptionStyle}" />
+                            </StackPanel>
+                            <Button Grid.Column="2" Style="{StaticResource NerdyOutlineButtonStyle}" Click="OnAddAppClick">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <fi:SymbolIcon Symbol="Add" FontSize="16" />
+                                    <TextBlock Text="Add app" />
+                                </StackPanel>
+                                <Button.Flyout>
+                                    <Flyout x:Name="AddAppFlyout" Placement="BottomEdgeAlignedRight">
+                                        <StackPanel Width="300" Spacing="8">
+                                            <TextBlock Text="Allow an app" Style="{StaticResource NerdyStrongStyle}" />
+                                            <ListView ItemsSource="{x:Bind ViewModel.AddableApps}" MaxHeight="340" SelectionMode="None" IsItemClickEnabled="True" ItemClick="OnAddableClick">
+                                                <ListView.ItemTemplate>
+                                                    <DataTemplate x:DataType="vm:AddableApp">
+                                                        <StackPanel Padding="0,6">
+                                                            <TextBlock Text="{x:Bind Name}" Style="{StaticResource NerdyBodyStyle}" />
+                                                            <TextBlock Text="{x:Bind Detail}" Style="{StaticResource NerdyCaptionStyle}" />
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </ListView.ItemTemplate>
+                                            </ListView>
+                                        </StackPanel>
+                                    </Flyout>
+                                </Button.Flyout>
+                            </Button>
+                        </Grid>
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.Apps}" Margin="36,0,0,0" IsTabStop="False">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:AllowedAppRowViewModel">
+                                    <Grid ColumnSpacing="12" Padding="0,9" BorderBrush="{ThemeResource NerdyDividerBrush}" BorderThickness="0,0,0,1">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Width="32" Height="32" CornerRadius="8" Background="{ThemeResource NerdyIconTileBrush}">
+                                            <fi:SymbolIcon Symbol="{x:Bind Icon}" FontSize="20" Foreground="{ThemeResource NerdyTextStrongBrush}" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock Text="{x:Bind Name}" FontWeight="Medium" Style="{StaticResource NerdyTextBase}" />
+                                            <TextBlock Text="{x:Bind Description}" Style="{StaticResource NerdyCaptionStyle}" />
+                                        </StackPanel>
+                                        <ToggleSwitch Grid.Column="2" IsOn="{x:Bind Enabled, Mode=TwoWay}" OnContent="" OffContent="" MinWidth="0" AutomationProperties.Name="{x:Bind Name}" />
+                                        <Button Grid.Column="3" Style="{StaticResource NerdyIconButtonStyle}" Width="28" Height="28" Command="{x:Bind RemoveCommand}"
+                                                ToolTipService.ToolTip="Remove from list" AutomationProperties.Name="Remove">
+                                            <fi:SymbolIcon Symbol="Dismiss" FontSize="14" Foreground="{ThemeResource NerdyTextSecondaryBrush}" />
+                                        </Button>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource SettingRowStyle}">
+                    <StackPanel>
+                        <Grid ColumnSpacing="16" Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition />
+                            </Grid.ColumnDefinitions>
+                            <fi:SymbolIcon Symbol="Globe" Style="{StaticResource SettingIconStyle}" />
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="Allowed websites" Style="{StaticResource SettingTitleStyle}" />
+                                <TextBlock Style="{StaticResource NerdyCaptionWrapStyle}"
+                                           Text="One click away in the session dock. Browsers follow the allowed apps list; site-by-site blocking will come with a browser extension." />
+                            </StackPanel>
+                        </Grid>
+                        <StackPanel Margin="36,0,0,0">
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.Websites}" IsTabStop="False">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <tk:WrapPanel HorizontalSpacing="6" VerticalSpacing="6" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:WebsiteChip">
+                                        <Border Background="{ThemeResource NerdyIconTileBrush}" CornerRadius="6" Padding="10,4,4,4">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <TextBlock Text="{x:Bind Site}" FontSize="12" VerticalAlignment="Center" Style="{StaticResource NerdyTextBase}" />
+                                                <Button Style="{StaticResource PlainButtonStyle}" Width="18" Height="18" CornerRadius="9" Command="{x:Bind RemoveCommand}"
+                                                        ToolTipService.ToolTip="Remove" AutomationProperties.Name="Remove website">
+                                                    <fi:SymbolIcon Symbol="Dismiss" FontSize="10" />
+                                                </Button>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBox PlaceholderText="Add a website and press Enter" Margin="0,10,0,0" MaxWidth="360" HorizontalAlignment="Left" Width="360"
+                                     Text="{x:Bind ViewModel.NewWebsite, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" KeyDown="OnWebsiteKeyDown" AutomationProperties.Name="Add website" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- ===================== Planning ===================== -->
+            <StackPanel Spacing="6" Visibility="{x:Bind ViewModel.IsPlanning, Mode=OneWay}">
+                <Border Style="{StaticResource SettingRowStyle}">
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <fi:SymbolIcon Symbol="Clock" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Study day" Style="{StaticResource SettingTitleStyle}" />
+                            <TextBlock Text="Used for schedule suggestions and the focus heatmap" Style="{StaticResource NerdyCaptionStyle}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                            <ComboBox ItemsSource="{x:Bind ViewModel.StartHourOptions}" SelectedItem="{x:Bind ViewModel.StudyStart, Mode=TwoWay}" MinWidth="110" AutomationProperties.Name="Study day starts" />
+                            <TextBlock Text="to" VerticalAlignment="Center" Style="{StaticResource NerdySecondaryStyle}" />
+                            <ComboBox ItemsSource="{x:Bind ViewModel.EndHourOptions}" SelectedItem="{x:Bind ViewModel.StudyEnd, Mode=TwoWay}" MinWidth="110" AutomationProperties.Name="Study day ends" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                <Border Style="{StaticResource SettingRowStyle}">
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <fi:SymbolIcon Symbol="Alert" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Default reminder" Style="{StaticResource SettingTitleStyle}" />
+                            <TextBlock Text="Pre-filled when you add an event" Style="{StaticResource NerdyCaptionStyle}" />
+                        </StackPanel>
+                        <ComboBox Grid.Column="2" ItemsSource="{x:Bind ViewModel.ReminderOptions}" SelectedItem="{x:Bind ViewModel.DefaultReminder, Mode=TwoWay}" MinWidth="180"
+                                  AutomationProperties.Name="Default reminder" />
+                    </Grid>
+                </Border>
+            </StackPanel>
+
+            <!-- ===================== Notifications ===================== -->
+            <StackPanel Spacing="6" Visibility="{x:Bind ViewModel.IsNotifications, Mode=OneWay}">
+                <Border Style="{StaticResource SettingRowStyle}">
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <fi:SymbolIcon Symbol="Alert" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Notifications" Style="{StaticResource SettingTitleStyle}" />
+                            <TextBlock Text="Reminders, upcoming study blocks and a heads-up before scheduled focus sessions" Style="{StaticResource NerdyCaptionWrapStyle}" />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="2" IsOn="{x:Bind ViewModel.Notifications, Mode=TwoWay}" OnContent="" OffContent="" MinWidth="0" AutomationProperties.Name="Notifications" />
+                    </Grid>
+                </Border>
+                <Border Style="{StaticResource SettingRowStyle}">
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <fi:SymbolIcon Symbol="WindowArrowUp" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Keep running in the notification area" Style="{StaticResource SettingTitleStyle}" />
+                            <TextBlock Text="Closing the window keeps Nerdy running so reminders still arrive" Style="{StaticResource NerdyCaptionWrapStyle}" />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="2" IsOn="{x:Bind ViewModel.KeepRunningInTray, Mode=TwoWay}" OnContent="" OffContent="" MinWidth="0"
+                                      AutomationProperties.Name="Keep running in the notification area" />
+                    </Grid>
+                </Border>
+            </StackPanel>
+
+            <!-- ===================== Account ===================== -->
+            <StackPanel Spacing="6" Visibility="{x:Bind ViewModel.IsAccount, Mode=OneWay}">
+                <Border Style="{StaticResource SettingRowStyle}" Padding="20">
+                    <Grid ColumnSpacing="18">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="64" Height="64" CornerRadius="32" Background="{ThemeResource NerdyAccentBrush}" VerticalAlignment="Top">
+                            <TextBlock Text="{x:Bind ViewModel.Initials, Mode=OneWay}" FontSize="24" FontWeight="SemiBold" Foreground="{ThemeResource NerdyOnAccentBrush}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Spacing="10">
+                            <StackPanel>
+                                <TextBlock Text="{x:Bind ViewModel.Email, Mode=OneWay}" Style="{StaticResource NerdyStrongStyle}" />
+                                <TextBlock Text="{x:Bind ViewModel.MemberSince, Mode=OneWay}" Style="{StaticResource NerdyCaptionStyle}" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBox Header="Name" Width="300" Text="{x:Bind ViewModel.DisplayName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" MaxLength="80" />
+                                <Button Style="{StaticResource NerdyAccentButtonStyle}" Content="Save" VerticalAlignment="Bottom" IsEnabled="{x:Bind ViewModel.CanSaveName, Mode=OneWay}"
+                                        Command="{x:Bind ViewModel.SaveNameCommand}" AutomationProperties.Name="Save name" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource SettingRowStyle}" Background="{ThemeResource NerdyWarningSoftBrush}" BorderBrush="{ThemeResource NerdyWarningBrush}"
+                        Visibility="{x:Bind ViewModel.EmailUnconfirmed, Mode=OneWay}">
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <fi:SymbolIcon Symbol="MailWarning" FontSize="20" Foreground="{ThemeResource NerdyWarningTextBrush}" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Confirm your email" Style="{StaticResource SettingTitleStyle}" Foreground="{ThemeResource NerdyWarningTextBrush}" />
+                            <TextBlock Text="Open the link we emailed you to show this address is yours." Style="{StaticResource NerdyCaptionStyle}" Foreground="{ThemeResource NerdyWarningTextBrush}" />
+                        </StackPanel>
+                        <Button Grid.Column="2" Style="{StaticResource NerdyOutlineButtonStyle}" Content="Resend email" Command="{x:Bind ViewModel.ResendConfirmationCommand}" />
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource SettingRowStyle}">
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <fi:SymbolIcon Symbol="HatGraduation" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Role" Style="{StaticResource SettingTitleStyle}" />
+                            <TextBlock Text="Teachers can create classes and assign work" Style="{StaticResource NerdyCaptionStyle}" />
+                        </StackPanel>
+                        <Border Grid.Column="2" Style="{StaticResource NerdySegmentTrackStyle}" CornerRadius="10">
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.RoleSegments}" ItemTemplate="{StaticResource NerdySegmentTemplate}" ItemsPanel="{StaticResource NerdyHorizontalPanel}"
+                                          IsEnabled="{x:Bind h:B.Not(ViewModel.IsBusy), Mode=OneWay}" IsTabStop="False" />
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource SettingRowStyle}">
+                    <StackPanel>
+                        <Grid ColumnSpacing="16" Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition />
+                            </Grid.ColumnDefinitions>
+                            <fi:SymbolIcon Symbol="Key" Style="{StaticResource SettingIconStyle}" />
+                            <TextBlock Grid.Column="1" Text="Ways to sign in" Style="{StaticResource SettingTitleStyle}" VerticalAlignment="Center" />
+                        </Grid>
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.SignInMethods}" Margin="36,0,0,0" IsTabStop="False">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:SignInMethod">
+                                    <Grid ColumnSpacing="10" Padding="0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition />
+                                        </Grid.ColumnDefinitions>
+                                        <fi:SymbolIcon Symbol="{x:Bind Icon}" FontSize="16" Foreground="{ThemeResource NerdyTextSecondaryBrush}" VerticalAlignment="Center" />
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="{x:Bind Label}" Style="{StaticResource NerdyTextBase}" />
+                                            <TextBlock Text="{x:Bind Detail}" Style="{StaticResource NerdyCaptionStyle}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource SettingRowStyle}">
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <fi:SymbolIcon Symbol="ArrowSync" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Sync" Style="{StaticResource SettingTitleStyle}" />
+                            <TextBlock Text="{x:Bind ViewModel.SyncText, Mode=OneWay}" Style="{StaticResource NerdyCaptionWrapStyle}" />
+                        </StackPanel>
+                        <Button Grid.Column="2" Style="{StaticResource NerdyOutlineButtonStyle}" Content="Sync now" Command="{x:Bind ViewModel.SyncNowCommand}" />
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource SettingRowStyle}">
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <fi:SymbolIcon Symbol="SignOut" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Sign out" Style="{StaticResource SettingTitleStyle}" />
+                            <TextBlock Text="Your data stays in your account and comes back when you sign in" Style="{StaticResource NerdyCaptionStyle}" />
+                        </StackPanel>
+                        <Button Grid.Column="2" Style="{StaticResource NerdyOutlineButtonStyle}" Content="Sign out" Command="{x:Bind ViewModel.SignOutCommand}" />
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource SettingRowStyle}" BorderBrush="{ThemeResource NerdyDangerBorderBrush}" Margin="0,12,0,0">
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <fi:SymbolIcon Symbol="Delete" FontSize="20" Foreground="{ThemeResource NerdyDangerTextBrush}" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Delete account" Style="{StaticResource SettingTitleStyle}" Foreground="{ThemeResource NerdyDangerTextBrush}" />
+                            <TextBlock Text="Permanently removes your account and all of your data" Style="{StaticResource NerdyCaptionStyle}" />
+                        </StackPanel>
+                        <Button Grid.Column="2" Style="{StaticResource NerdyDangerButtonStyle}" Content="Delete account" Command="{x:Bind ViewModel.DeleteAccountCommand}"
+                                IsEnabled="{x:Bind h:B.Not(ViewModel.IsBusy), Mode=OneWay}" />
+                    </Grid>
+                </Border>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

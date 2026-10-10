@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="Nerdy.App.Views.Dialogs.ReminderEditorDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Edit reminder"
+    PrimaryButtonText="Save"
+    SecondaryButtonText="Delete"
+    CloseButtonText="Cancel"
+    DefaultButton="Primary"
+    IsPrimaryButtonEnabled="{x:Bind ViewModel.CanSave, Mode=OneWay}">
+
+    <StackPanel Spacing="14" Width="440">
+        <TextBox Header="Reminder" Text="{x:Bind ViewModel.Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        <ComboBox Header="Topic" HorizontalAlignment="Stretch" ItemsSource="{x:Bind ViewModel.Topics}" SelectedItem="{x:Bind ViewModel.Topic, Mode=TwoWay}" />
+        <ToggleSwitch Header="Due date" IsOn="{x:Bind ViewModel.HasDate, Mode=TwoWay}" />
+        <!-- Quick due times like the Focus durations; Custom shows the date and time pickers. -->
+        <Border Style="{StaticResource NerdyCardStyle}" Padding="16,14" Visibility="{x:Bind ViewModel.HasDate, Mode=OneWay}">
+            <StackPanel>
+                <Grid Margin="0,0,0,10" ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Due" Style="{StaticResource NerdyStrongStyle}" VerticalAlignment="Bottom" />
+                    <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.DueText, Mode=OneWay}" FontSize="20" FontWeight="SemiBold" Style="{StaticResource NerdyTextBase}" />
+                </Grid>
+                <ItemsControl ItemsSource="{x:Bind ViewModel.DueChips}" ItemTemplate="{StaticResource NerdyFillChipTemplate}"
+                              ItemsPanel="{StaticResource NerdyChipRowPanel}" IsTabStop="False" />
+                <!-- Date and time on separate rows: side by side, the time picker's AM/PM column got cut off. -->
+                <StackPanel Spacing="10" Margin="0,12,0,0" Visibility="{x:Bind ViewModel.IsCustom, Mode=OneWay}">
+                    <CalendarDatePicker HorizontalAlignment="Stretch" Date="{x:Bind ViewModel.Date, Mode=TwoWay}" AutomationProperties.Name="Due date" />
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <CheckBox Content="At" MinWidth="0" VerticalAlignment="Center" IsChecked="{x:Bind ViewModel.HasTime, Mode=TwoWay}" />
+                        <TimePicker Grid.Column="1" HorizontalAlignment="Stretch" MinuteIncrement="5" Time="{x:Bind ViewModel.Time, Mode=TwoWay}"
+                                    IsEnabled="{x:Bind ViewModel.HasTime, Mode=OneWay}" AutomationProperties.Name="Due time" />
+                    </Grid>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+        <TextBox Header="Notes" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="72" Text="{x:Bind ViewModel.Notes, Mode=TwoWay}" />
+        <CheckBox Content="Starred" IsChecked="{x:Bind ViewModel.IsStarred, Mode=TwoWay}" />
+    </StackPanel>
+</ContentDialog>

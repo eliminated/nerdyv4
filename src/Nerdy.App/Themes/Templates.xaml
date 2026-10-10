@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ResourceDictionary
+    x:Class="Nerdy.App.Themes.Templates"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:fi="using:FluentIcons.WinUI"
+    xmlns:h="using:Nerdy.App.Helpers"
+    xmlns:tk="using:CommunityToolkit.WinUI.Controls"
+    xmlns:common="using:Nerdy.App.ViewModels.Common">
+
+    <!-- Segmented control: put an ItemsControl with this template inside a NerdySegmentTrackStyle border. -->
+    <Style x:Key="NerdySegmentTrackStyle" TargetType="Border">
+        <Setter Property="Background" Value="{ThemeResource NerdySegmentTrackBrush}" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="3" />
+        <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+
+    <ItemsPanelTemplate x:Key="NerdyHorizontalPanel">
+        <StackPanel Orientation="Horizontal" />
+    </ItemsPanelTemplate>
+
+    <!-- A row of equal-width quick-pick buttons (like the Focus durations): NerdyFillChipTemplate in NerdyChipRowPanel. -->
+    <ItemsPanelTemplate x:Key="NerdyChipRowPanel">
+        <tk:UniformGrid Rows="1" ColumnSpacing="6" />
+    </ItemsPanelTemplate>
+
+    <DataTemplate x:Key="NerdyFillChipTemplate" x:DataType="common:ChoiceItem">
+        <Button Style="{StaticResource PlainButtonStyle}" Height="34" Padding="4,0" HorizontalAlignment="Stretch"
+                Background="{x:Bind Background, Mode=OneWay}" BorderBrush="{x:Bind BorderBrush, Mode=OneWay}" BorderThickness="1"
+                Command="{x:Bind SelectCommand}" IsEnabled="{x:Bind IsEnabled, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind ToolTip, Mode=OneWay}"
+                AutomationProperties.Name="{x:Bind Label}">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+                <fi:SymbolIcon Symbol="{x:Bind Icon, Mode=OneWay}" FontSize="16" Foreground="{x:Bind Foreground, Mode=OneWay}" Visibility="{x:Bind HasIcon}" />
+                <TextBlock Text="{x:Bind Label}" FontSize="13" FontWeight="Medium" Foreground="{x:Bind Foreground, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+        </Button>
+    </DataTemplate>
+
+    <DataTemplate x:Key="NerdySegmentTemplate" x:DataType="common:ChoiceItem">
+        <Button Style="{StaticResource PlainButtonStyle}" Height="30" Padding="14,0" CornerRadius="6"
+                Background="{x:Bind Background, Mode=OneWay}" BorderBrush="{x:Bind BorderBrush, Mode=OneWay}" BorderThickness="{x:Bind BorderThickness, Mode=OneWay}"
+                Command="{x:Bind SelectCommand}" IsEnabled="{x:Bind IsEnabled, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind ToolTip, Mode=OneWay}"
+                AutomationProperties.Name="{x:Bind Label}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <fi:SymbolIcon Symbol="{x:Bind Icon, Mode=OneWay}" FontSize="16" Foreground="{x:Bind Foreground, Mode=OneWay}" Visibility="{x:Bind HasIcon}" />
+                <TextBlock Text="{x:Bind Label}" FontSize="13" FontWeight="{x:Bind Weight, Mode=OneWay}" Foreground="{x:Bind Foreground, Mode=OneWay}" VerticalAlignment="Center" />
+            </StackPanel>
+        </Button>
+    </DataTemplate>
+
+    <!-- Segment that stretches to fill an equal-width track (UniformGrid). -->
+    <DataTemplate x:Key="NerdyFillSegmentTemplate" x:DataType="common:ChoiceItem">
+        <Button Style="{StaticResource PlainButtonStyle}" Height="30" Padding="6,0" CornerRadius="6" HorizontalAlignment="Stretch"
+                Background="{x:Bind Background, Mode=OneWay}" BorderBrush="{x:Bind BorderBrush, Mode=OneWay}" BorderThickness="{x:Bind BorderThickness, Mode=OneWay}"
+                Command="{x:Bind SelectCommand}" IsEnabled="{x:Bind IsEnabled, Mode=OneWay}" AutomationProperties.Name="{x:Bind Label}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <fi:SymbolIcon Symbol="{x:Bind Icon, Mode=OneWay}" FontSize="16" Foreground="{x:Bind Foreground, Mode=OneWay}" Visibility="{x:Bind HasIcon}" />
+                <TextBlock Text="{x:Bind Label}" FontSize="13" FontWeight="{x:Bind Weight, Mode=OneWay}" Foreground="{x:Bind Foreground, Mode=OneWay}" VerticalAlignment="Center" />
+            </StackPanel>
+        </Button>
+    </DataTemplate>
+
+    <DataTemplate x:Key="NerdyChipTemplate" x:DataType="common:ChoiceItem">
+        <Button Style="{StaticResource PlainButtonStyle}" Height="34" MinWidth="44" Padding="14,0" Margin="0,0,8,8"
+                Background="{x:Bind Background, Mode=OneWay}" BorderBrush="{x:Bind BorderBrush, Mode=OneWay}" BorderThickness="{x:Bind BorderThickness, Mode=OneWay}"
+                Command="{x:Bind SelectCommand}" IsEnabled="{x:Bind IsEnabled, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind ToolTip, Mode=OneWay}"
+                AutomationProperties.Name="{x:Bind Label}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <fi:SymbolIcon Symbol="{x:Bind Icon, Mode=OneWay}" FontSize="16" Foreground="{x:Bind Foreground, Mode=OneWay}" Visibility="{x:Bind HasIcon}" />
+                <TextBlock Text="{x:Bind Label}" FontWeight="Medium" Foreground="{x:Bind Foreground, Mode=OneWay}" VerticalAlignment="Center" />
+            </StackPanel>
+        </Button>
+    </DataTemplate>
+
+    <!-- Round chip (onboarding subjects): same states as a chip, pill-shaped. -->
+    <DataTemplate x:Key="NerdyPillChipTemplate" x:DataType="common:ChoiceItem">
+        <Button Style="{StaticResource PlainButtonStyle}" Height="36" Padding="14,0" Margin="0,0,8,8" CornerRadius="18"
+                Background="{x:Bind Background, Mode=OneWay}" BorderBrush="{x:Bind BorderBrush, Mode=OneWay}" BorderThickness="{x:Bind BorderThickness, Mode=OneWay}"
+                Command="{x:Bind SelectCommand}" AutomationProperties.Name="{x:Bind Label}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <fi:SymbolIcon Symbol="{x:Bind Icon, Mode=OneWay}" FontSize="16" Foreground="{x:Bind Foreground, Mode=OneWay}" Visibility="{x:Bind HasIcon}" />
+                <TextBlock Text="{x:Bind Label}" FontWeight="Medium" Foreground="{x:Bind Foreground, Mode=OneWay}" VerticalAlignment="Center" />
+            </StackPanel>
+        </Button>
+    </DataTemplate>
+
+    <DataTemplate x:Key="NerdyColorChipTemplate" x:DataType="common:ChoiceItem">
+        <Button Style="{StaticResource PlainButtonStyle}" Height="32" Padding="12,0" Margin="0,0,8,8" CornerRadius="16"
+                Background="{x:Bind Background, Mode=OneWay}" BorderBrush="{x:Bind BorderBrush, Mode=OneWay}" BorderThickness="{x:Bind BorderThickness, Mode=OneWay}"
+                Command="{x:Bind SelectCommand}" AutomationProperties.Name="{x:Bind Label}">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Ellipse Width="8" Height="8" Fill="{x:Bind DotBrush, Mode=OneWay}" VerticalAlignment="Center" />
+                <TextBlock Text="{x:Bind Label}" FontSize="13" Foreground="{x:Bind Foreground, Mode=OneWay}" VerticalAlignment="Center" />
+            </StackPanel>
+        </Button>
+    </DataTemplate>
+
+    <DataTemplate x:Key="NerdyChoiceCardTemplate" x:DataType="common:ChoiceItem">
+        <Button Style="{StaticResource PlainButtonStyle}" Padding="16" CornerRadius="14" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                Background="{x:Bind Background, Mode=OneWay}" BorderBrush="{x:Bind BorderBrush, Mode=OneWay}" BorderThickness="{x:Bind BorderThickness, Mode=OneWay}"
+                Command="{x:Bind SelectCommand}" AutomationProperties.Name="{x:Bind Label}">
+            <Button.RenderTransform>
+                <TranslateTransform Y="{x:Bind Lift, Mode=OneWay}" />
+            </Button.RenderTransform>
+            <Grid ColumnSpacing="14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Border Width="42" Height="42" CornerRadius="12" Background="{x:Bind IconBackground, Mode=OneWay}" VerticalAlignment="Center">
+                    <fi:SymbolIcon Symbol="{x:Bind Icon, Mode=OneWay}" FontSize="24" Foreground="{x:Bind IconForeground, Mode=OneWay}" />
+                </Border>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="{x:Bind Label}" Style="{StaticResource NerdyStrongStyle}" />
+                    <TextBlock Text="{x:Bind Description}" Style="{StaticResource NerdyCaptionWrapStyle}" Visibility="{x:Bind HasDescription}" />
+                </StackPanel>
+            </Grid>
+        </Button>
+    </DataTemplate>
+</ResourceDictionary>

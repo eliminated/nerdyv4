@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="Nerdy.App.Views.AuthPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:fi="using:FluentIcons.WinUI"
+    xmlns:controls="using:Nerdy.App.Controls"
+    xmlns:h="using:Nerdy.App.Helpers">
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="5*" />
+            <ColumnDefinition Width="6*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Brand panel -->
+        <Grid x:Name="BrandPanel">
+            <controls:WallpaperBackground Wallpaper="bloom" />
+            <Grid Padding="48,40,48,48">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Image Source="ms-appx:///Assets/NerdyLogo64.png" Width="32" Height="32" />
+                    <TextBlock Text="Nerdy" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" Style="{StaticResource NerdyTextBase}" />
+                </StackPanel>
+                <StackPanel Grid.Row="1" VerticalAlignment="Center" Spacing="22" MaxWidth="470" HorizontalAlignment="Left">
+                    <TextBlock Text="Plan it. Focus on it. Get it done." FontSize="34" FontWeight="SemiBold" CharacterSpacing="-15"
+                               TextWrapping="Wrap" Style="{StaticResource NerdyTextBase}" TextTrimming="None" LineHeight="42" />
+                    <StackPanel Spacing="14">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <Border Width="36" Height="36" CornerRadius="10" Background="{ThemeResource NerdyCardBackgroundBrush}">
+                                <fi:SymbolIcon Symbol="CalendarEdit" FontSize="20" Foreground="{ThemeResource NerdyAccentBrush}" />
+                            </Border>
+                            <TextBlock Text="Study blocks that fit around your timetable" VerticalAlignment="Center" Style="{StaticResource NerdyBodyStyle}" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <Border Width="36" Height="36" CornerRadius="10" Background="{ThemeResource NerdyCardBackgroundBrush}">
+                                <fi:SymbolIcon Symbol="ShieldLock" FontSize="20" Foreground="{ThemeResource NerdyAccentBrush}" />
+                            </Border>
+                            <TextBlock Text="Focus and Ultra-Focus that keep distractions away" VerticalAlignment="Center" Style="{StaticResource NerdyBodyStyle}" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <Border Width="36" Height="36" CornerRadius="10" Background="{ThemeResource NerdyCardBackgroundBrush}">
+                                <fi:SymbolIcon Symbol="PeopleTeam" FontSize="20" Foreground="{ThemeResource NerdyAccentBrush}" />
+                            </Border>
+                            <TextBlock Text="Classes for teachers and students" VerticalAlignment="Center" Style="{StaticResource NerdyBodyStyle}" />
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+                <TextBlock Grid.Row="2" Text="For students, teachers, researchers and lifelong learners." Style="{StaticResource NerdyCaptionStyle}" />
+            </Grid>
+        </Grid>
+
+        <!-- Form -->
+        <Grid Grid.Column="1">
+            <Grid x:Name="DragRegion" Height="48" VerticalAlignment="Top" Background="Transparent" />
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Width="380" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16" Margin="0,64">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="{x:Bind ViewModel.Title, Mode=OneWay}" Style="{StaticResource NerdyPageTitleStyle}" />
+                        <TextBlock Text="{x:Bind ViewModel.Subtitle, Mode=OneWay}" Style="{StaticResource NerdySecondaryWrapStyle}" />
+                    </StackPanel>
+
+                    <InfoBar IsOpen="{x:Bind ViewModel.HasError, Mode=OneWay}" Severity="Error" IsClosable="False"
+                             Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}" />
+                    <InfoBar IsOpen="{x:Bind ViewModel.HasInfo, Mode=OneWay}" Severity="Informational" IsClosable="False"
+                             Message="{x:Bind ViewModel.InfoMessage, Mode=OneWay}" />
+
+                    <StackPanel Spacing="12" IsHitTestVisible="{x:Bind ViewModel.CanInteract, Mode=OneWay}">
+                        <TextBox Header="Your name" PlaceholderText="Sam Kim" Style="{StaticResource NerdyTextBoxStyle}"
+                                 Text="{x:Bind ViewModel.DisplayName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Visibility="{x:Bind ViewModel.IsRegister, Mode=OneWay}" AutomationProperties.Name="Your name" />
+                        <TextBox x:Name="EmailBox" Header="Email" PlaceholderText="you@school.edu" InputScope="EmailSmtpAddress" Style="{StaticResource NerdyTextBoxStyle}"
+                                 Text="{x:Bind ViewModel.Email, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Email" />
+                        <TextBox Header="Reset code" PlaceholderText="Paste the code from the email" Style="{StaticResource NerdyTextBoxStyle}"
+                                 Text="{x:Bind ViewModel.ResetToken, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Visibility="{x:Bind ViewModel.IsReset, Mode=OneWay}" AutomationProperties.Name="Reset code" />
+                        <PasswordBox x:Name="PasswordInput" Header="Password" Visibility="{x:Bind ViewModel.ShowPassword, Mode=OneWay}"
+                                     Password="{x:Bind ViewModel.Password, Mode=TwoWay}" KeyDown="OnPasswordKeyDown" AutomationProperties.Name="Password" />
+                        <Button Style="{StaticResource NerdyLinkButtonStyle}" Content="Forgot password?" HorizontalAlignment="Right" Margin="0,-6,0,0"
+                                Command="{x:Bind ViewModel.ShowForgotCommand}" Visibility="{x:Bind ViewModel.IsSignIn, Mode=OneWay}" />
+
+                        <Button Style="{StaticResource NerdyAccentButtonStyle}" Height="40" HorizontalAlignment="Stretch" Command="{x:Bind ViewModel.SubmitCommand}"
+                                AutomationProperties.Name="{x:Bind ViewModel.SubmitLabel, Mode=OneWay}">
+                            <Grid>
+                                <TextBlock Text="{x:Bind ViewModel.SubmitLabel, Mode=OneWay}" Opacity="{x:Bind h:B.FadeWhen(ViewModel.IsBusy), Mode=OneWay}" />
+                                <ProgressRing IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}" Width="18" Height="18" Foreground="White" />
+                            </Grid>
+                        </Button>
+                        <Button Style="{StaticResource NerdyLinkButtonStyle}" Content="Back to sign in" HorizontalAlignment="Center"
+                                Command="{x:Bind ViewModel.BackToSignInCommand}" Visibility="{x:Bind ViewModel.IsForgotOrReset, Mode=OneWay}" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="12" Visibility="{x:Bind ViewModel.ShowExternal, Mode=OneWay}">
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition />
+                            </Grid.ColumnDefinitions>
+                            <Rectangle Style="{StaticResource NerdyDividerStyle}" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="or" Style="{StaticResource NerdyCaptionStyle}" />
+                            <Rectangle Grid.Column="2" Style="{StaticResource NerdyDividerStyle}" VerticalAlignment="Center" />
+                        </Grid>
+                        <Button Style="{StaticResource NerdyOutlineButtonStyle}" Height="40" HorizontalAlignment="Stretch"
+                                Command="{x:Bind ViewModel.SignInWithMicrosoftCommand}" Visibility="{x:Bind ViewModel.HasMicrosoft, Mode=OneWay}">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <Grid Width="16" Height="16" ColumnSpacing="1" RowSpacing="1">
+                                    <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions><RowDefinition /><RowDefinition /></Grid.RowDefinitions>
+                                    <Rectangle Fill="#F25022" />
+                                    <Rectangle Grid.Column="1" Fill="#7FBA00" />
+                                    <Rectangle Grid.Row="1" Fill="#00A4EF" />
+                                    <Rectangle Grid.Row="1" Grid.Column="1" Fill="#FFB900" />
+                                </Grid>
+                                <TextBlock Text="Continue with Microsoft" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource NerdyOutlineButtonStyle}" Height="40" HorizontalAlignment="Stretch"
+                                Command="{x:Bind ViewModel.SignInWithGoogleCommand}" Visibility="{x:Bind ViewModel.HasGoogle, Mode=OneWay}">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBlock Text="G" FontWeight="Bold" FontSize="16" Foreground="#4285F4" VerticalAlignment="Center" />
+                                <TextBlock Text="Continue with Google" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" Visibility="{x:Bind ViewModel.IsWaitingForBrowser, Mode=OneWay}">
+                            <TextBlock Text="Finish signing in in your browser…" Style="{StaticResource NerdyCaptionStyle}" VerticalAlignment="Center" />
+                            <Button Style="{StaticResource NerdyLinkButtonStyle}" Content="Cancel" Command="{x:Bind ViewModel.CancelExternalCommand}" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="2"
+                                Visibility="{x:Bind h:B.Collapsed(ViewModel.IsForgotOrReset), Mode=OneWay}">
+                        <TextBlock Text="{x:Bind ViewModel.SwitchPrompt, Mode=OneWay}" Style="{StaticResource NerdySecondaryStyle}" VerticalAlignment="Center" />
+                        <Button Style="{StaticResource NerdyLinkButtonStyle}" Content="{x:Bind ViewModel.SwitchAction, Mode=OneWay}" Command="{x:Bind ViewModel.ToggleRegisterCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+</Page>

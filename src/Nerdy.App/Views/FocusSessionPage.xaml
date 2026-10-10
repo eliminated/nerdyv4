@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="Nerdy.App.Views.FocusSessionPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:fi="using:FluentIcons.WinUI"
+    xmlns:controls="using:Nerdy.App.Controls"
+    xmlns:vm="using:Nerdy.App.ViewModels"
+    xmlns:focus="using:Nerdy.App.Services.Focus"
+    xmlns:h="using:Nerdy.App.Helpers"
+    FontFamily="{x:Bind Theme.FontFamily, Mode=OneWay}">
+
+    <Page.Resources>
+        <Style x:Key="GlassPillButton" TargetType="Button" BasedOn="{StaticResource PlainButtonStyle}">
+            <Setter Property="Height" Value="44" />
+            <Setter Property="Padding" Value="18,0" />
+            <Setter Property="CornerRadius" Value="22" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Background" Value="{ThemeResource NerdyGlassStrongBrush}" />
+        </Style>
+
+        <DataTemplate x:Key="DockItemTemplate" x:DataType="vm:DockItem">
+            <Button Style="{StaticResource PlainButtonStyle}" Width="44" Height="44" CornerRadius="12" Margin="0,0,6,0"
+                    Background="{ThemeResource NerdyCardBackgroundBrush}" Command="{x:Bind OpenCommand}"
+                    ToolTipService.ToolTip="{x:Bind Name}" AutomationProperties.Name="{x:Bind Name}">
+                <fi:SymbolIcon Symbol="{x:Bind Icon}" FontSize="22" Foreground="{ThemeResource NerdyTextStrongBrush}" />
+            </Button>
+        </DataTemplate>
+    </Page.Resources>
+
+    <Grid>
+        <controls:WallpaperBackground Wallpaper="{x:Bind ViewModel.Wallpaper, Mode=OneWay}" />
+        <Grid x:Name="DragRegion" Height="40" VerticalAlignment="Top" Background="Transparent" />
+
+        <!-- ===== Layout A: centred ring ===== -->
+        <Grid Visibility="{x:Bind h:B.Collapsed(ViewModel.IsAgendaLayout), Mode=OneWay}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Grid Padding="24,48,24,0">
+                <Border Background="{ThemeResource NerdyGlassBrush}" CornerRadius="16" Padding="14,6" HorizontalAlignment="Left">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <fi:SymbolIcon Symbol="TargetArrow" FontSize="16" Foreground="{ThemeResource NerdyAccentBrush}" />
+                        <TextBlock Text="Focus mode" FontSize="13" FontWeight="SemiBold" Style="{StaticResource NerdyTextBase}" />
+                    </StackPanel>
+                </Border>
+                <Border Background="{ThemeResource NerdyGlassBrush}" CornerRadius="16" Padding="14,6" HorizontalAlignment="Right">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <fi:SymbolIcon Symbol="ShieldCheckmark" FontSize="16" Foreground="{ThemeResource NerdyTextStrongBrush}" />
+                        <TextBlock Text="Other apps are kept out of the way" FontSize="13" Foreground="{ThemeResource NerdyTextStrongBrush}" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="18">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock Text="{x:Bind ViewModel.TaskTitle, Mode=OneWay}" FontSize="22" FontWeight="SemiBold" HorizontalAlignment="Center" Style="{StaticResource NerdyTextBase}" />
+                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center" Margin="0,4,0,0">
+                        <Ellipse Width="8" Height="8" Fill="{x:Bind ViewModel.TopicBrush, Mode=OneWay}" VerticalAlignment="Center" />
+                        <TextBlock Text="{x:Bind ViewModel.TopicName, Mode=OneWay}" FontSize="13" Foreground="{ThemeResource NerdyTextStrongBrush}" />
+                    </StackPanel>
+                </StackPanel>
+                <Grid Width="340" Height="340">
+                    <controls:TimerRing Value="{x:Bind ViewModel.Remaining, Mode=OneWay}" Thickness="12"
+                                        TrackBrush="{ThemeResource NerdyTrackBrush}" RingBrush="{ThemeResource NerdyAccentBrush}" CenterBrush="{ThemeResource NerdyGlassFaintBrush}" />
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <TextBlock x:Name="RingTime" Text="{x:Bind ViewModel.TimeText, Mode=OneWay}" FontSize="72" FontWeight="SemiBold" CharacterSpacing="-20"
+                                   HorizontalAlignment="Center" Style="{StaticResource NerdyTextBase}" />
+                        <TextBlock Text="{x:Bind ViewModel.SubText, Mode=OneWay}" HorizontalAlignment="Center" Foreground="{ThemeResource NerdyTextStrongBrush}" />
+                    </StackPanel>
+                </Grid>
+                <StackPanel Orientation="Horizontal" Spacing="14" HorizontalAlignment="Center">
+                    <Button Style="{StaticResource GlassPillButton}" Content="+5 min" Command="{x:Bind ViewModel.AddFiveCommand}" />
+                    <Button Style="{StaticResource NerdyAccentButtonStyle}" Width="64" Height="64" CornerRadius="32" Padding="0"
+                            Command="{x:Bind ViewModel.TogglePauseCommand}" ToolTipService.ToolTip="{x:Bind ViewModel.PauseLabel, Mode=OneWay}"
+                            AutomationProperties.Name="{x:Bind ViewModel.PauseLabel, Mode=OneWay}">
+                        <fi:SymbolIcon Symbol="{x:Bind ViewModel.PauseIcon, Mode=OneWay}" IconVariant="Filled" FontSize="28" Foreground="White" />
+                    </Button>
+                    <Button Style="{StaticResource GlassPillButton}" Content="End session" Command="{x:Bind ViewModel.EndCommand}" />
+                </StackPanel>
+            </StackPanel>
+
+            <Border Grid.Row="2" HorizontalAlignment="Center" Margin="0,0,0,24" Padding="8" CornerRadius="16" Background="{ThemeResource NerdyGlassBrush}">
+                <StackPanel Orientation="Horizontal">
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.Dock}" ItemTemplate="{StaticResource DockItemTemplate}" ItemsPanel="{StaticResource NerdyHorizontalPanel}" IsTabStop="False" />
+                    <Button Style="{StaticResource PlainButtonStyle}" Width="44" Height="44" CornerRadius="12" Background="{ThemeResource NerdyCardBackgroundBrush}"
+                            ToolTipService.ToolTip="Quick note" AutomationProperties.Name="Quick note">
+                        <fi:SymbolIcon Symbol="Notepad" FontSize="22" Foreground="{ThemeResource NerdyAccentBrush}" />
+                        <Button.Flyout>
+                            <Flyout Placement="Top">
+                                <StackPanel Width="300" Spacing="8">
+                                    <TextBlock Text="Quick note" Style="{StaticResource NerdyStrongStyle}" />
+                                    <TextBox AcceptsReturn="True" TextWrapping="Wrap" Height="96" PlaceholderText="Jot down a thought so it stops nagging you"
+                                             Text="{x:Bind ViewModel.QuickNote, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <Button Style="{StaticResource NerdyAccentButtonStyle}" Content="Save to notes" HorizontalAlignment="Right" Click="OnSaveQuickNote" />
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+                    <TextBlock Text="Allowed apps" FontSize="12" Margin="10,0" VerticalAlignment="Center" Foreground="{ThemeResource NerdyTextStrongBrush}" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- ===== Layout B: big timer + plan ===== -->
+        <Grid Visibility="{x:Bind ViewModel.IsAgendaLayout, Mode=OneWay}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="4" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <controls:ProgressTrack Value="{x:Bind ViewModel.ElapsedPercent, Mode=OneWay}" Fill="{ThemeResource NerdyAccentBrush}" Height="4" />
+            <Grid Grid.Row="1" Padding="72,40,48,40" ColumnSpacing="24">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="400" />
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <fi:SymbolIcon Symbol="TargetArrow" FontSize="16" Foreground="{ThemeResource NerdyAccentTextBrush}" />
+                        <TextBlock Text="FOCUSING ON" FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource NerdyAccentTextBrush}" />
+                    </StackPanel>
+                    <TextBlock Text="{x:Bind ViewModel.TaskTitle, Mode=OneWay}" FontSize="34" FontWeight="SemiBold" Margin="0,6,0,0" Style="{StaticResource NerdyTextBase}" />
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Ellipse Width="8" Height="8" Fill="{x:Bind ViewModel.TopicBrush, Mode=OneWay}" VerticalAlignment="Center" />
+                        <TextBlock Text="{x:Bind ViewModel.TopicName, Mode=OneWay}" Foreground="{ThemeResource NerdyTextStrongBrush}" />
+                    </StackPanel>
+                    <TextBlock x:Name="BigTime" Text="{x:Bind ViewModel.TimeText, Mode=OneWay}" FontSize="168" FontWeight="Light" CharacterSpacing="-40"
+                               Margin="0,20,0,8" Style="{StaticResource NerdyTextBase}" LineHeight="168" />
+                    <TextBlock Text="{x:Bind ViewModel.EndsText, Mode=OneWay}" Margin="0,0,0,28" Foreground="{ThemeResource NerdyTextStrongBrush}" />
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Button Style="{StaticResource NerdyAccentButtonStyle}" Height="44" Padding="22,0" CornerRadius="12" FontSize="15" Command="{x:Bind ViewModel.TogglePauseCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <fi:SymbolIcon Symbol="{x:Bind ViewModel.PauseIcon, Mode=OneWay}" IconVariant="Filled" FontSize="20" Foreground="White" />
+                                <TextBlock Text="{x:Bind ViewModel.PauseLabel, Mode=OneWay}" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource GlassPillButton}" CornerRadius="12" Content="+5 min" Command="{x:Bind ViewModel.AddFiveCommand}" />
+                        <Button Style="{StaticResource GlassPillButton}" CornerRadius="12" Content="End session" Command="{x:Bind ViewModel.EndCommand}" />
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="14">
+                    <Border Background="{ThemeResource NerdyGlassStrongBrush}" CornerRadius="18" Padding="22,20">
+                        <StackPanel>
+                            <TextBlock Text="Session plan" Style="{StaticResource NerdyStrongStyle}" Margin="0,0,0,6" />
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.Plan}" IsTabStop="False">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="focus:PlanItem">
+                                        <CheckBox Content="{x:Bind Text}" IsChecked="{x:Bind Done, Mode=TwoWay}" Padding="8,10,0,10" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBox PlaceholderText="Add a step and press Enter" Margin="0,6,0,0" Text="{x:Bind ViewModel.NewPlanItem, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     KeyDown="OnPlanKeyDown" AutomationProperties.Name="Add a plan step" />
+                        </StackPanel>
+                    </Border>
+                    <Border Background="{ThemeResource NerdyGlassStrongBrush}" CornerRadius="18" Padding="22,18" Visibility="{x:Bind ViewModel.HasUpNext, Mode=OneWay}">
+                        <StackPanel>
+                            <TextBlock Text="Up next" FontSize="12" Foreground="{ThemeResource NerdyTextStrongBrush}" Margin="0,0,0,4" />
+                            <Grid ColumnSpacing="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Ellipse Width="8" Height="8" Fill="{x:Bind ViewModel.UpNextBrush, Mode=OneWay}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.UpNextTitle, Mode=OneWay}" Style="{StaticResource NerdyStrongStyle}" />
+                                <TextBlock Grid.Column="2" Text="{x:Bind ViewModel.UpNextTime, Mode=OneWay}" FontSize="13" Foreground="{ThemeResource NerdyTextStrongBrush}" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                    <Border Background="{ThemeResource NerdyGlassStrongBrush}" CornerRadius="18" Padding="14,12">
+                        <Grid>
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.Dock}" ItemTemplate="{StaticResource DockItemTemplate}" ItemsPanel="{StaticResource NerdyHorizontalPanel}" IsTabStop="False" />
+                            <TextBlock Text="Allowed apps" FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="{ThemeResource NerdyTextStrongBrush}" />
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Grid>
+</Page>
