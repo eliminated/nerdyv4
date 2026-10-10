@@ -1,0 +1,459 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="Nerdy.App.Views.HomePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:fi="using:FluentIcons.WinUI"
+    xmlns:tk="using:CommunityToolkit.WinUI.Controls"
+    xmlns:vm="using:Nerdy.App.ViewModels"
+    xmlns:items="using:Nerdy.App.ViewModels.Items"
+    xmlns:common="using:Nerdy.App.ViewModels.Common"
+    xmlns:controls="using:Nerdy.App.Controls"
+    xmlns:h="using:Nerdy.App.Helpers">
+
+    <Page.Resources>
+        <!-- A reminder row with the prototype's round check. -->
+        <DataTemplate x:Key="ReminderRowTemplate" x:DataType="items:ReminderItemViewModel">
+            <Grid ColumnSpacing="12" Padding="4,9" BorderThickness="0,0,0,1" BorderBrush="{ThemeResource NerdyDividerBrush}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button Style="{StaticResource PlainButtonStyle}" Width="20" Height="20" CornerRadius="10" VerticalAlignment="Top" Margin="0,1,0,0"
+                        Background="{x:Bind CheckBackground, Mode=OneWay}" BorderBrush="{x:Bind CheckBorder, Mode=OneWay}" BorderThickness="1.5"
+                        Command="{x:Bind ToggleDoneCommand}" AutomationProperties.Name="Mark done">
+                    <fi:SymbolIcon Symbol="Checkmark" FontSize="14" Foreground="White" Visibility="{x:Bind IsDone, Mode=OneWay}" />
+                </Button>
+                <StackPanel Grid.Column="1">
+                    <TextBlock Text="{x:Bind Title}" Foreground="{x:Bind TitleBrush, Mode=OneWay}" TextDecorations="{x:Bind Decorations, Mode=OneWay}" Style="{StaticResource NerdyTextBase}" />
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Ellipse Width="7" Height="7" Fill="{x:Bind DotBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="{x:Bind MetaText}" FontSize="12" Foreground="{x:Bind DueBrush, Mode=OneWay}" Style="{StaticResource NerdyTextBase}" />
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="CompactReminderTemplate" x:DataType="items:ReminderItemViewModel">
+            <Grid ColumnSpacing="10" Padding="0,7">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button Style="{StaticResource PlainButtonStyle}" Width="18" Height="18" CornerRadius="9"
+                        Background="{x:Bind CheckBackground, Mode=OneWay}" BorderBrush="{x:Bind CheckBorder, Mode=OneWay}" BorderThickness="1.5"
+                        Command="{x:Bind ToggleDoneCommand}" AutomationProperties.Name="Mark done">
+                    <fi:SymbolIcon Symbol="Checkmark" FontSize="12" Foreground="White" Visibility="{x:Bind IsDone, Mode=OneWay}" />
+                </Button>
+                <TextBlock Grid.Column="1" Text="{x:Bind Title}" FontSize="13" VerticalAlignment="Center"
+                           Foreground="{x:Bind TitleBrush, Mode=OneWay}" TextDecorations="{x:Bind Decorations, Mode=OneWay}" Style="{StaticResource NerdyTextBase}" />
+            </Grid>
+        </DataTemplate>
+    </Page.Resources>
+
+    <Grid>
+        <!-- ===================== Layout A: Dashboard ===================== -->
+        <ScrollViewer Visibility="{x:Bind ViewModel.IsDashboard, Mode=OneWay}" Padding="32,28,32,32">
+            <StackPanel Spacing="16" MaxWidth="1400">
+                <Grid ColumnSpacing="12" Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Bottom">
+                        <TextBlock Text="{x:Bind ViewModel.DateText, Mode=OneWay}" Style="{StaticResource NerdyEyebrowStyle}" />
+                        <TextBlock Text="{x:Bind ViewModel.Greeting, Mode=OneWay}" Style="{StaticResource NerdyPageTitleStyle}" />
+                    </StackPanel>
+                    <Button Grid.Column="1" Style="{StaticResource NerdyOutlineButtonStyle}" VerticalAlignment="Bottom" Command="{x:Bind ViewModel.CustomizeCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <fi:SymbolIcon Symbol="PaintBrush" FontSize="16" />
+                            <TextBlock Text="Customize" />
+                        </StackPanel>
+                    </Button>
+                    <Button Grid.Column="2" Style="{StaticResource NerdyAccentButtonStyle}" VerticalAlignment="Bottom" Command="{x:Bind ViewModel.OpenFocusCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <fi:SymbolIcon Symbol="TargetArrow" FontSize="16" Foreground="White" />
+                            <TextBlock Text="Start focus" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
+                <!-- Row 1: next up, focused today, streak -->
+                <Grid ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.7*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Border Visibility="{x:Bind ViewModel.ShowNext, Mode=OneWay}" CornerRadius="14" Padding="22,20"
+                            Background="{ThemeResource NerdyAccentSoftBrush}" BorderBrush="{ThemeResource NerdyAccentSoftBorderBrush}" BorderThickness="1">
+                        <Grid RowSpacing="6">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Border HorizontalAlignment="Left" Background="{ThemeResource NerdyCardBackgroundBrush}" CornerRadius="12" Padding="10,3">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <fi:SymbolIcon Symbol="Clock" FontSize="14" Foreground="{ThemeResource NerdyAccentTextBrush}" />
+                                    <TextBlock Text="{x:Bind ViewModel.NextBadge, Mode=OneWay}" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource NerdyAccentTextBrush}" />
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Grid.Row="1" Text="{x:Bind ViewModel.NextTitle, Mode=OneWay}" FontSize="22" FontWeight="SemiBold" Margin="0,6,0,0" Style="{StaticResource NerdyTextBase}" />
+                            <TextBlock Grid.Row="2" Text="{x:Bind ViewModel.NextDetail, Mode=OneWay}" Style="{StaticResource NerdySecondaryStyle}" FontSize="14" />
+                            <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom" Margin="0,14,0,0">
+                                <Button Style="{StaticResource NerdyAccentButtonStyle}" Height="32" Padding="14,0" Command="{x:Bind ViewModel.FocusOnNextCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <fi:SymbolIcon Symbol="Play" IconVariant="Filled" FontSize="14" Foreground="White" />
+                                        <TextBlock Text="{x:Bind ViewModel.NextActionLabel, Mode=OneWay}" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource NerdyOutlineButtonStyle}" Height="32" Content="Open notes" Command="{x:Bind ViewModel.OpenNextNotesCommand}"
+                                        Visibility="{x:Bind ViewModel.HasNext, Mode=OneWay}" />
+                                <Button Style="{StaticResource NerdyOutlineButtonStyle}" Height="32" Content="Plan a study block" Command="{x:Bind ViewModel.OpenScheduleCommand}"
+                                        Visibility="{x:Bind h:B.Collapsed(ViewModel.HasNext), Mode=OneWay}" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Column="1" Style="{StaticResource NerdyCardStyle}" Visibility="{x:Bind ViewModel.ShowStats, Mode=OneWay}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" MinHeight="70" />
+                            </Grid.RowDefinitions>
+                            <Grid>
+                                <TextBlock Text="Focused today" Style="{StaticResource NerdySecondaryStyle}" />
+                                <Button Style="{StaticResource NerdyLinkButtonStyle}" Content="Details" HorizontalAlignment="Right" Padding="0" Command="{x:Bind ViewModel.OpenStatsCommand}" />
+                            </Grid>
+                            <TextBlock Grid.Row="1" Text="{x:Bind ViewModel.TodayFocusText, Mode=OneWay}" Style="{StaticResource NerdyMetricStyle}" />
+                            <ItemsControl Grid.Row="2" ItemsSource="{x:Bind ViewModel.WeekBars}" VerticalAlignment="Bottom" IsTabStop="False">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <tk:UniformGrid Rows="1" ColumnSpacing="8" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:WeekBar">
+                                        <StackPanel Spacing="4" VerticalAlignment="Bottom" ToolTipService.ToolTip="{x:Bind ToolTip}">
+                                            <Border Height="{x:Bind Height}" CornerRadius="4" Background="{x:Bind Fill}" />
+                                            <TextBlock Text="{x:Bind Label}" FontSize="11" HorizontalAlignment="Center" Style="{StaticResource NerdyCaptionStyle}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Column="2" Style="{StaticResource NerdyCardStyle}" Visibility="{x:Bind ViewModel.ShowStreak, Mode=OneWay}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <fi:SymbolIcon Symbol="Fire" FontSize="16" Foreground="{ThemeResource NerdyWarningBrush}" />
+                                <TextBlock Text="Focus streak" Style="{StaticResource NerdySecondaryStyle}" />
+                            </StackPanel>
+                            <TextBlock Grid.Row="1" Text="{x:Bind ViewModel.StreakText, Mode=OneWay}" Style="{StaticResource NerdyMetricStyle}" />
+                            <ItemsControl Grid.Row="2" ItemsSource="{x:Bind ViewModel.StreakCells}" VerticalAlignment="Bottom" Margin="0,12,0,0" IsTabStop="False">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <tk:UniformGrid Columns="7" ColumnSpacing="6" RowSpacing="6" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:StreakCell">
+                                        <Border Height="22" CornerRadius="6" Background="{x:Bind Fill}" ToolTipService.ToolTip="{x:Bind ToolTip}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Grid>
+                    </Border>
+                </Grid>
+
+                <!-- Row 2: today's schedule, reminders -->
+                <Grid ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.4*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Border Style="{StaticResource NerdyCardStyle}" Visibility="{x:Bind ViewModel.ShowSchedule, Mode=OneWay}">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,10">
+                                <TextBlock Text="Today's schedule" Style="{StaticResource NerdyCardTitleStyle}" />
+                                <Button Style="{StaticResource NerdyLinkButtonStyle}" Content="Open calendar" HorizontalAlignment="Right" Padding="0" Command="{x:Bind ViewModel.OpenCalendarCommand}" />
+                            </Grid>
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.TodayRows}" IsTabStop="False">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:ScheduleRow">
+                                        <StackPanel>
+                                            <Grid ColumnSpacing="8" Margin="0,4" Visibility="{x:Bind ShowNowBefore}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <Ellipse Width="8" Height="8" Fill="{ThemeResource NerdyAccentBrush}" />
+                                                <TextBlock Grid.Column="1" Text="{x:Bind NowText}" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource NerdyAccentBrush}" />
+                                                <Rectangle Grid.Column="2" Height="1" Fill="{ThemeResource NerdyAccentBrush}" Opacity="0.5" VerticalAlignment="Center" />
+                                            </Grid>
+                                            <Grid ColumnSpacing="14" Padding="8,10" Opacity="{x:Bind Opacity}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="68" />
+                                                    <ColumnDefinition Width="4" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="{x:Bind StartText}" Style="{StaticResource NerdySecondaryStyle}" VerticalAlignment="Center" />
+                                                <Rectangle Grid.Column="1" RadiusX="2" RadiusY="2" Fill="{x:Bind Dot}" />
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="{x:Bind Title}" Style="{StaticResource NerdyStrongStyle}" />
+                                                    <TextBlock Text="{x:Bind Detail}" Style="{StaticResource NerdyCaptionStyle}" />
+                                                </StackPanel>
+                                                <fi:SymbolIcon Grid.Column="3" Symbol="CheckmarkCircle" FontSize="20" Foreground="{ThemeResource NerdySuccessBrush}" Visibility="{x:Bind IsPast}" />
+                                            </Grid>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <StackPanel Visibility="{x:Bind h:B.Collapsed(ViewModel.HasTodayRows), Mode=OneWay}" Spacing="8" Padding="0,8">
+                                <TextBlock Text="Nothing on your calendar today." Style="{StaticResource NerdySecondaryStyle}" />
+                                <Button Style="{StaticResource NerdyOutlineButtonStyle}" Content="Plan a study block" HorizontalAlignment="Left" Command="{x:Bind ViewModel.OpenScheduleCommand}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <StackPanel Grid.Column="1" Spacing="16">
+                        <Border Style="{StaticResource NerdyCardStyle}" Visibility="{x:Bind ViewModel.ShowReminders, Mode=OneWay}">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,10">
+                                    <TextBlock Text="Reminders" Style="{StaticResource NerdyCardTitleStyle}" />
+                                    <Button Style="{StaticResource NerdyLinkButtonStyle}" Content="View all" HorizontalAlignment="Right" Padding="0" Command="{x:Bind ViewModel.OpenRemindersCommand}" />
+                                </Grid>
+                                <ItemsControl ItemsSource="{x:Bind ViewModel.Reminders}" ItemTemplate="{StaticResource ReminderRowTemplate}" IsTabStop="False" />
+                                <TextBlock Text="Nothing due today." Visibility="{x:Bind h:B.Collapsed(ViewModel.HasReminders), Mode=OneWay}" Style="{StaticResource NerdySecondaryStyle}" Margin="0,4" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource NerdyCardStyle}" Visibility="{x:Bind ViewModel.ShowAssignments, Mode=OneWay}">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,10">
+                                    <TextBlock Text="Class assignments" Style="{StaticResource NerdyCardTitleStyle}" />
+                                    <Button Style="{StaticResource NerdyLinkButtonStyle}" Content="Classes" HorizontalAlignment="Right" Padding="0" Command="{x:Bind ViewModel.OpenClassesCommand}" />
+                                </Grid>
+                                <ItemsControl ItemsSource="{x:Bind ViewModel.Assignments}" ItemTemplate="{StaticResource ReminderRowTemplate}" IsTabStop="False" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Row 3: topic progress -->
+                <ItemsControl ItemsSource="{x:Bind ViewModel.Topics}" Visibility="{x:Bind ViewModel.ShowTopics, Mode=OneWay}" IsTabStop="False">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <tk:UniformGrid Columns="4" ColumnSpacing="16" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:TopicCardViewModel">
+                            <Button Style="{StaticResource PlainButtonStyle}" CornerRadius="14" Padding="18,16" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                    Background="{ThemeResource NerdyCardBackgroundBrush}" BorderBrush="{ThemeResource NerdyCardBorderBrush}" BorderThickness="1"
+                                    Command="{x:Bind OpenCommand}" AutomationProperties.Name="{x:Bind Name}">
+                                <StackPanel>
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Rectangle Width="10" Height="10" RadiusX="3" RadiusY="3" Fill="{x:Bind Color}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" Text="{x:Bind Name}" Style="{StaticResource NerdyStrongStyle}" />
+                                        <TextBlock Grid.Column="2" Text="{x:Bind PercentText}" Style="{StaticResource NerdyCaptionStyle}" VerticalAlignment="Center" />
+                                    </Grid>
+                                    <controls:ProgressTrack Value="{x:Bind Percent}" Fill="{x:Bind Color}" Margin="0,12,0,10" />
+                                    <TextBlock Text="{x:Bind NextText}" Style="{StaticResource NerdyCaptionStyle}" />
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- ===================== Layout B: Agenda ===================== -->
+        <Grid Visibility="{x:Bind ViewModel.IsAgenda, Mode=OneWay}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="380" />
+            </Grid.ColumnDefinitions>
+            <Grid Padding="32,28,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Grid Margin="0,0,24,16">
+                    <StackPanel>
+                        <TextBlock Text="{x:Bind ViewModel.AgendaSubtitle, Mode=OneWay}" Style="{StaticResource NerdyEyebrowStyle}" />
+                        <TextBlock Text="{x:Bind ViewModel.Greeting, Mode=OneWay}" Style="{StaticResource NerdyPageTitleStyle}" />
+                    </StackPanel>
+                    <Button Style="{StaticResource NerdyOutlineButtonStyle}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Command="{x:Bind ViewModel.OpenScheduleCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <fi:SymbolIcon Symbol="Add" FontSize="16" />
+                            <TextBlock Text="Add block" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+                <ScrollViewer Grid.Row="1" Padding="0,8,24,24" Visibility="{x:Bind ViewModel.ShowSchedule, Mode=OneWay}">
+                    <Grid Height="{x:Bind ViewModel.AgendaHeight}">
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.Hours}" IsTabStop="False">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <Grid />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:HourLine">
+                                    <Grid VerticalAlignment="Top" Margin="{x:Bind h:B.TopMargin(Top)}" ColumnSpacing="12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="52" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{x:Bind Label}" FontSize="12" TextAlignment="Right" Margin="0,-8,0,0" Style="{StaticResource NerdyCaptionStyle}" />
+                                        <Rectangle Grid.Column="1" Height="1" Fill="{ThemeResource NerdyGridLineBrush}" VerticalAlignment="Top" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.AgendaBlocks}" Margin="72,0,0,0" IsTabStop="False">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <Grid />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:AgendaBlock">
+                                    <Border VerticalAlignment="Top" Margin="{x:Bind h:B.TopMargin(Top)}" Height="{x:Bind Height}" CornerRadius="12" Padding="14,10"
+                                            Background="{x:Bind Background}" Opacity="{x:Bind Opacity}">
+                                        <Grid ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" Foreground="{x:Bind Foreground}" Style="{StaticResource NerdyTextBase}" />
+                                                <TextBlock Text="{x:Bind Detail}" FontSize="12" Foreground="{x:Bind Foreground}" Style="{StaticResource NerdyTextBase}" />
+                                            </StackPanel>
+                                            <Button Grid.Column="1" Style="{StaticResource NerdyAccentButtonStyle}" Height="30" Padding="12,0" FontSize="13" VerticalAlignment="Top"
+                                                    Visibility="{x:Bind IsNext}" Command="{x:Bind FocusCommand}">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <fi:SymbolIcon Symbol="Play" IconVariant="Filled" FontSize="14" Foreground="White" />
+                                                    <TextBlock Text="Focus" />
+                                                </StackPanel>
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Grid VerticalAlignment="Top" Margin="{x:Bind h:B.NowMargin(ViewModel.NowTop), Mode=OneWay}" Visibility="{x:Bind ViewModel.ShowNowLine, Mode=OneWay}" IsHitTestVisible="False">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Ellipse Width="10" Height="10" Fill="{ThemeResource NerdyAccentBrush}" />
+                            <Rectangle Grid.Column="1" Height="2" Fill="{ThemeResource NerdyAccentBrush}" VerticalAlignment="Center" />
+                        </Grid>
+                    </Grid>
+                </ScrollViewer>
+            </Grid>
+
+            <!-- Side panel -->
+            <Border Grid.Column="1" BorderBrush="{ThemeResource NerdyCardBorderBrush}" BorderThickness="1,0,0,0">
+                <ScrollViewer Padding="24,28,24,24">
+                    <StackPanel Spacing="22">
+                        <Border Style="{StaticResource NerdyCardStyle}" CornerRadius="16" Padding="20">
+                            <StackPanel Spacing="14">
+                                <Border Background="{ThemeResource NerdySegmentTrackBrush}" CornerRadius="10" Padding="3">
+                                    <ItemsControl ItemsSource="{x:Bind ViewModel.ModeSegments}" ItemTemplate="{StaticResource NerdyFillSegmentTemplate}" IsTabStop="False">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <tk:UniformGrid Rows="1" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                    </ItemsControl>
+                                </Border>
+                                <Grid Width="168" Height="168" HorizontalAlignment="Center">
+                                    <Ellipse Stroke="{ThemeResource NerdyAccentTint14Brush}" StrokeThickness="10" />
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="{x:Bind ViewModel.DurationText, Mode=OneWay}" FontSize="40" FontWeight="SemiBold" HorizontalAlignment="Center" Style="{StaticResource NerdyTextBase}" />
+                                        <TextBlock Text="minutes" HorizontalAlignment="Center" Style="{StaticResource NerdyCaptionStyle}" />
+                                    </StackPanel>
+                                </Grid>
+                                <ItemsControl ItemsSource="{x:Bind ViewModel.DurationChips}" HorizontalAlignment="Center" IsTabStop="False">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="6" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="common:ChoiceItem">
+                                            <Button Style="{StaticResource PlainButtonStyle}" Height="28" Padding="12,0" CornerRadius="14"
+                                                    Background="{x:Bind Background, Mode=OneWay}" BorderBrush="{x:Bind BorderBrush, Mode=OneWay}" BorderThickness="1"
+                                                    Command="{x:Bind SelectCommand}">
+                                                <TextBlock Text="{x:Bind Label}" FontSize="13" FontWeight="Medium" Foreground="{x:Bind Foreground, Mode=OneWay}" />
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Button Style="{StaticResource NerdyAccentButtonStyle}" Height="40" CornerRadius="10" FontSize="15" HorizontalAlignment="Stretch"
+                                        Command="{x:Bind ViewModel.StartFocusCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <fi:SymbolIcon Symbol="{x:Bind ViewModel.StartIcon, Mode=OneWay}" FontSize="18" Foreground="White" />
+                                        <TextBlock Text="{x:Bind ViewModel.StartLabel, Mode=OneWay}" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+
+                        <StackPanel Visibility="{x:Bind ViewModel.ShowReminders, Mode=OneWay}">
+                            <Grid Margin="0,0,0,6">
+                                <TextBlock Text="Due today" Style="{StaticResource NerdyStrongStyle}" />
+                                <Button Style="{StaticResource NerdyLinkButtonStyle}" Content="All" HorizontalAlignment="Right" Padding="0" Command="{x:Bind ViewModel.OpenRemindersCommand}" />
+                            </Grid>
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.Reminders}" ItemTemplate="{StaticResource CompactReminderTemplate}" IsTabStop="False" />
+                            <TextBlock Text="Nothing due today." Visibility="{x:Bind h:B.Collapsed(ViewModel.HasReminders), Mode=OneWay}" Style="{StaticResource NerdySecondaryStyle}" />
+                        </StackPanel>
+
+                        <StackPanel Visibility="{x:Bind ViewModel.ShowTopics, Mode=OneWay}">
+                            <TextBlock Text="Topics" Style="{StaticResource NerdyStrongStyle}" Margin="0,0,0,8" />
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.Topics}" IsTabStop="False">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Spacing="10" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:TopicCardViewModel">
+                                        <Button Style="{StaticResource PlainButtonStyle}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0,2" Command="{x:Bind OpenCommand}">
+                                            <StackPanel Spacing="4">
+                                                <Grid>
+                                                    <TextBlock Text="{x:Bind Name}" FontSize="13" Style="{StaticResource NerdyTextBase}" />
+                                                    <TextBlock Text="{x:Bind PercentText}" HorizontalAlignment="Right" Style="{StaticResource NerdyCaptionStyle}" />
+                                                </Grid>
+                                                <controls:ProgressTrack Value="{x:Bind Percent}" Fill="{x:Bind Color}" Height="5" />
+                                            </StackPanel>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+    </Grid>
+</Page>

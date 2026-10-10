@@ -1,0 +1,19 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "appName": { "value": "nerdy" },
+    "appServiceSku": { "value": "B1" },
+    "sqlEntraAdminLogin": { "value": "you@yourtenant.onmicrosoft.com" },
+    "sqlEntraAdminObjectId": { "value": "00000000-0000-0000-0000-000000000000" },
+    "sqlEntraAdminPrincipalType": { "value": "User" },
+    "sqlAutoPauseDelayMinutes": { "value": 60 },
+    "sqlMaxVCores": { "value": 1 },
+    "sqlUseFreeOffer": { "value": false },
+    "googleClientId": { "value": "" },
+    "microsoftClientId": { "value": "" },
+    "emailFrom": { "value": "" },
+    "enableExitReview": { "value": false },
+    "publicBaseUrl": { "value": "" }
+  }
+}

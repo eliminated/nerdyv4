@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="Nerdy.App.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:fi="using:FluentIcons.WinUI"
+    Title="Nerdy">
+    <Window.SystemBackdrop>
+        <MicaBackdrop />
+    </Window.SystemBackdrop>
+
+    <Grid x:Name="RootGrid">
+        <Frame x:Name="RootFrame" />
+
+        <!-- In-app toast (prototype: dark pill at the bottom centre). -->
+        <Border x:Name="ToastHost"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Bottom"
+                Margin="0,0,0,28"
+                Padding="16,10"
+                CornerRadius="12"
+                Background="#24242B"
+                Visibility="Collapsed"
+                Opacity="0">
+            <Border.RenderTransform>
+                <TranslateTransform x:Name="ToastTranslate" Y="14" />
+            </Border.RenderTransform>
+            <StackPanel Orientation="Horizontal" Spacing="10">
+                <fi:SymbolIcon x:Name="ToastIcon" Symbol="CheckmarkCircle" FontSize="20" Foreground="#7BE0B5" VerticalAlignment="Center" />
+                <TextBlock x:Name="ToastText" Foreground="White" FontSize="13" VerticalAlignment="Center" MaxWidth="560" TextWrapping="Wrap" />
+                <Button x:Name="ToastAction" Style="{StaticResource NerdyLinkButtonStyle}" Foreground="#A7A7F0" Visibility="Collapsed" Click="OnToastAction" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

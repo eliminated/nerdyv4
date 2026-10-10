@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="Nerdy.App.Views.OnboardingPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:fi="using:FluentIcons.WinUI"
+    xmlns:controls="using:Nerdy.App.Controls"
+    xmlns:tk="using:CommunityToolkit.WinUI.Controls"
+    xmlns:vm="using:Nerdy.App.ViewModels"
+    xmlns:h="using:Nerdy.App.Helpers"
+    FontFamily="{x:Bind Theme.FontFamily, Mode=OneWay}">
+
+    <Grid>
+        <controls:WallpaperBackground Wallpaper="{x:Bind ViewModel.Wallpaper, Mode=OneWay}" />
+        <Grid x:Name="DragRegion" Height="40" VerticalAlignment="Top" Background="Transparent" />
+
+        <Border Width="640" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,40"
+                Background="{ThemeResource NerdyOverlayCardBrush}" CornerRadius="22" Padding="40,36,40,30">
+            <StackPanel>
+                <!-- Progress -->
+                <ItemsControl ItemsSource="{x:Bind ViewModel.Dots}" Margin="0,0,0,28" IsTabStop="False" x:Name="DotsHost">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="6" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ProgressDot">
+                            <Rectangle Height="4" RadiusX="2" RadiusY="2" Width="{x:Bind Width}" Fill="{x:Bind Fill}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Step 0: welcome -->
+                <StackPanel Visibility="{x:Bind ViewModel.IsWelcome, Mode=OneWay}" HorizontalAlignment="Center">
+                    <Image Source="ms-appx:///Assets/NerdyLogo.png" Width="72" Height="72" Margin="0,0,0,20" />
+                    <TextBlock Text="Welcome to Nerdy" FontSize="32" FontWeight="SemiBold" CharacterSpacing="-10" HorizontalAlignment="Center" Style="{StaticResource NerdyTextBase}" />
+                    <TextBlock Text="Plan your week, keep your notes in one place, and protect your focus time." FontSize="16" MaxWidth="420"
+                               TextAlignment="Center" Margin="0,8,0,28" Style="{StaticResource NerdySecondaryWrapStyle}" />
+                    <Button Style="{StaticResource NerdyAccentButtonStyle}" Height="44" Padding="28,0" CornerRadius="12" FontSize="15"
+                            HorizontalAlignment="Center" Content="Get started" Command="{x:Bind ViewModel.NextCommand}" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,14,0,0" Spacing="2">
+                        <TextBlock Text="{x:Bind ViewModel.SignedInAs}" Style="{StaticResource NerdySecondaryStyle}" VerticalAlignment="Center" />
+                        <Button Style="{StaticResource NerdyLinkButtonStyle}" Content="Not you?" Command="{x:Bind ViewModel.SignOutCommand}" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Step 1: role -->
+                <StackPanel Visibility="{x:Bind ViewModel.IsRole, Mode=OneWay}">
+                    <TextBlock Text="How will you use Nerdy?" FontSize="26" FontWeight="SemiBold" Style="{StaticResource NerdyTextBase}" />
+                    <TextBlock Text="We'll suggest a starting setup. You can change everything later." Margin="0,2,0,20" Style="{StaticResource NerdySecondaryStyle}" />
+                    <Border Visibility="{x:Bind ViewModel.ShowSuggestion, Mode=OneWay}" Background="{ThemeResource NerdyAccentSoftBrush}" CornerRadius="10" Padding="12,10" Margin="0,-6,0,14">
+                        <Grid ColumnSpacing="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition />
+                            </Grid.ColumnDefinitions>
+                            <fi:SymbolIcon Symbol="Sparkle" FontSize="16" Foreground="{ThemeResource NerdyAccentTextBrush}" VerticalAlignment="Top" Margin="0,1,0,0" />
+                            <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.SuggestionText}" Style="{StaticResource NerdyBodyWrapStyle}" FontSize="13" />
+                        </Grid>
+                    </Border>
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.RoleCards}" ItemTemplate="{StaticResource NerdyChoiceCardTemplate}" IsTabStop="False">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <tk:UniformGrid Columns="2" ColumnSpacing="12" RowSpacing="12" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- Step 2: subjects -->
+                <StackPanel Visibility="{x:Bind ViewModel.IsSubjects, Mode=OneWay}">
+                    <TextBlock Text="What are you studying?" FontSize="26" FontWeight="SemiBold" Style="{StaticResource NerdyTextBase}" />
+                    <TextBlock Text="Each one becomes a topic. Add subtopics anytime." Margin="0,2,0,20" Style="{StaticResource NerdySecondaryStyle}" />
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.SubjectChips}" ItemTemplate="{StaticResource NerdyPillChipTemplate}" IsTabStop="False" Margin="0,0,0,8">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <tk:WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                    <TextBox PlaceholderText="Add your own subject and press Enter" Style="{StaticResource NerdyTextBoxStyle}"
+                             Text="{x:Bind ViewModel.NewSubject, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" KeyDown="OnSubjectKeyDown"
+                             AutomationProperties.Name="Add your own subject" />
+                </StackPanel>
+
+                <!-- Step 3: personalise -->
+                <StackPanel Visibility="{x:Bind ViewModel.IsPersonalize, Mode=OneWay}">
+                    <TextBlock Text="Make it yours" FontSize="26" FontWeight="SemiBold" Style="{StaticResource NerdyTextBase}" />
+                    <TextBlock Text="Pick an accent and a focus wallpaper." Margin="0,2,0,20" Style="{StaticResource NerdySecondaryStyle}" />
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.Swatches}" Margin="0,0,0,22" IsTabStop="False">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="8" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SwatchItem">
+                                <Button Style="{StaticResource PlainButtonStyle}" Width="44" Height="44" CornerRadius="22" Padding="0"
+                                        Command="{x:Bind PickCommand}" AutomationProperties.Name="{x:Bind Hex}">
+                                    <Border Width="44" Height="44" CornerRadius="22" BorderThickness="2" BorderBrush="{x:Bind Ring}" Padding="2">
+                                        <Ellipse Fill="{x:Bind Fill}" />
+                                    </Border>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.WallpaperOptions}" IsTabStop="False">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <tk:UniformGrid Columns="4" ColumnSpacing="10" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:WallpaperItem">
+                                <Button Style="{StaticResource PlainButtonStyle}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                        Command="{x:Bind PickCommand}" AutomationProperties.Name="{x:Bind Label}">
+                                    <StackPanel Spacing="6">
+                                        <Border Height="70" CornerRadius="10" BorderThickness="2" BorderBrush="{x:Bind Ring}">
+                                            <controls:WallpaperBackground Wallpaper="{x:Bind Id}" CornerRadius="8" />
+                                        </Border>
+                                        <TextBlock Text="{x:Bind Label}" Style="{StaticResource NerdyCaptionStyle}" />
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- Navigation -->
+                <Grid Margin="0,28,0,0" Visibility="{x:Bind ViewModel.ShowNav, Mode=OneWay}" ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{x:Bind ViewModel.StepText, Mode=OneWay}" Style="{StaticResource NerdySecondaryStyle}" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Style="{StaticResource NerdyOutlineButtonStyle}" Height="38" Padding="18,0" CornerRadius="10"
+                            Content="Back" Command="{x:Bind ViewModel.BackCommand}" />
+                    <Button Grid.Column="2" Style="{StaticResource NerdyAccentButtonStyle}" Height="38" Padding="20,0" CornerRadius="10"
+                            Command="{x:Bind ViewModel.NextCommand}" IsEnabled="{x:Bind h:B.Not(ViewModel.IsSaving), Mode=OneWay}"
+                            AutomationProperties.Name="{x:Bind ViewModel.NextLabel, Mode=OneWay}">
+                        <TextBlock Text="{x:Bind ViewModel.NextLabel, Mode=OneWay}" />
+                    </Button>
+                </Grid>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Page>

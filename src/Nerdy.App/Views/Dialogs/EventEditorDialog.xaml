@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="Nerdy.App.Views.Dialogs.EventEditorDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:Nerdy.App.ViewModels"
+    xmlns:h="using:Nerdy.App.Helpers"
+    Title="{x:Bind ViewModel.DialogTitle}"
+    PrimaryButtonText="Save"
+    CloseButtonText="Cancel"
+    DefaultButton="Primary"
+    IsPrimaryButtonEnabled="{x:Bind ViewModel.CanSave, Mode=OneWay}"
+    PrimaryButtonClick="OnSave">
+
+    <ScrollViewer MaxHeight="560" Padding="0,0,12,0">
+        <StackPanel Spacing="14" Width="460">
+            <TextBox Header="Title" PlaceholderText="e.g. Calculus II lecture" Text="{x:Bind ViewModel.Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                </Grid.ColumnDefinitions>
+                <ComboBox Header="Topic" HorizontalAlignment="Stretch" ItemsSource="{x:Bind ViewModel.Topics}" SelectedItem="{x:Bind ViewModel.Topic, Mode=TwoWay}" />
+                <CalendarDatePicker Grid.Column="1" Header="Date" HorizontalAlignment="Stretch" Date="{x:Bind ViewModel.Date, Mode=TwoWay}" />
+            </Grid>
+            <ToggleSwitch Header="All day" IsOn="{x:Bind ViewModel.IsAllDay, Mode=TwoWay}" />
+            <!-- Start and end: quick buttons like the Focus durations; Custom shows a time picker. -->
+            <Border Style="{StaticResource NerdyCardStyle}" Padding="16,14" Visibility="{x:Bind ViewModel.ShowTimes, Mode=OneWay}">
+                <StackPanel>
+                    <Grid Margin="0,0,0,10" ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Starts" Style="{StaticResource NerdyStrongStyle}" VerticalAlignment="Bottom" />
+                        <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.StartText, Mode=OneWay}" FontSize="22" FontWeight="SemiBold" Style="{StaticResource NerdyTextBase}" />
+                    </Grid>
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.StartChips}" ItemTemplate="{StaticResource NerdyFillChipTemplate}"
+                                  ItemsPanel="{StaticResource NerdyChipRowPanel}" IsTabStop="False" />
+                    <TimePicker Margin="0,12,0,0" HorizontalAlignment="Stretch" MinuteIncrement="5" Time="{x:Bind ViewModel.StartTime, Mode=TwoWay}"
+                                Visibility="{x:Bind ViewModel.IsStartCustom, Mode=OneWay}" AutomationProperties.Name="Start time" />
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource NerdyCardStyle}" Padding="16,14" Visibility="{x:Bind ViewModel.ShowTimes, Mode=OneWay}">
+                <StackPanel>
+                    <Grid Margin="0,0,0,10" ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Ends" Style="{StaticResource NerdyStrongStyle}" VerticalAlignment="Bottom" />
+                        <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.LengthText, Mode=OneWay}" VerticalAlignment="Bottom" Margin="0,0,0,4" Style="{StaticResource NerdySecondaryStyle}" />
+                        <TextBlock Grid.Column="2" Text="{x:Bind ViewModel.EndText, Mode=OneWay}" FontSize="22" FontWeight="SemiBold" Style="{StaticResource NerdyTextBase}" />
+                    </Grid>
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.EndChips}" ItemTemplate="{StaticResource NerdyFillChipTemplate}"
+                                  ItemsPanel="{StaticResource NerdyChipRowPanel}" IsTabStop="False" />
+                    <TimePicker Margin="0,12,0,0" HorizontalAlignment="Stretch" MinuteIncrement="5" Time="{x:Bind ViewModel.EndTime, Mode=TwoWay}"
+                                Visibility="{x:Bind ViewModel.IsEndCustom, Mode=OneWay}" AutomationProperties.Name="End time" />
+                </StackPanel>
+            </Border>
+            <TextBox Header="Location or details" PlaceholderText="Room 204, chapter 9…" Text="{x:Bind ViewModel.Subtitle, Mode=TwoWay}" />
+            <CheckBox Content="Exam or deadline (highlighted in the calendar)" IsChecked="{x:Bind ViewModel.IsMilestone, Mode=TwoWay}" />
+
+            <StackPanel Spacing="8">
+                <CheckBox Content="Repeats every week" IsChecked="{x:Bind ViewModel.Repeats, Mode=TwoWay}" />
+                <StackPanel Spacing="8" Visibility="{x:Bind ViewModel.Repeats, Mode=OneWay}" Margin="28,0,0,0">
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.DayChips}" ItemTemplate="{StaticResource NerdyChipTemplate}" ItemsPanel="{StaticResource NerdyHorizontalPanel}" IsTabStop="False" />
+                    <CalendarDatePicker Header="Until (optional)" PlaceholderText="No end date" Date="{x:Bind ViewModel.RepeatUntil, Mode=TwoWay}" />
+                </StackPanel>
+            </StackPanel>
+
+            <ComboBox Header="Reminder" HorizontalAlignment="Stretch" ItemsSource="{x:Bind vm:EventEditorViewModel.ReminderOptions}" SelectedItem="{x:Bind ViewModel.Reminder, Mode=TwoWay}" />
+            <Grid ColumnSpacing="12" Visibility="{x:Bind ViewModel.ShowTimes, Mode=OneWay}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="160" />
+                </Grid.ColumnDefinitions>
+                <ToggleSwitch Header="Start a focus session automatically" IsOn="{x:Bind ViewModel.AutoFocus, Mode=TwoWay}" />
+                <ComboBox Grid.Column="1" Header="Mode" HorizontalAlignment="Stretch" VerticalAlignment="Bottom" ItemsSource="{x:Bind vm:EventEditorViewModel.FocusModes}"
+                          SelectedItem="{x:Bind ViewModel.AutoFocusMode, Mode=TwoWay}" IsEnabled="{x:Bind ViewModel.AutoFocus, Mode=OneWay}" />
+            </Grid>
+            <TextBlock Text="Nerdy goes full screen when the event starts. You'll get a heads-up a minute before, and can skip it."
+                       Style="{StaticResource NerdyCaptionStyle}" TextWrapping="Wrap" Margin="0,-6,0,0"
+                       Visibility="{x:Bind ViewModel.ShowAutoFocusHint, Mode=OneWay}" />
+            <TextBlock Text="This start time has already passed, so there won't be a reminder or a prompt to start focusing."
+                       Foreground="{ThemeResource NerdyWarningTextBrush}" TextWrapping="Wrap" Visibility="{x:Bind ViewModel.StartsInPast, Mode=OneWay}" />
+
+            <TextBlock Text="{x:Bind ViewModel.Error, Mode=OneWay}" Foreground="{ThemeResource NerdyDangerTextBrush}" TextWrapping="Wrap"
+                       Visibility="{x:Bind h:B.HasText(ViewModel.Error), Mode=OneWay}" />
+        </StackPanel>
+    </ScrollViewer>
+</ContentDialog>
