@@ -12,8 +12,15 @@
     "sqlUseFreeOffer": { "value": false },
     "googleClientId": { "value": "" },
     "microsoftClientId": { "value": "" },
+    "enableManagedEmail": { "value": false },
+    "communicationDataLocation": { "value": "Asia Pacific" },
     "emailFrom": { "value": "" },
     "enableExitReview": { "value": false },
+    "claudeFederationAudience": { "value": "" },
+    "claudeFederationRuleId": { "value": "" },
+    "claudeOrganizationId": { "value": "" },
+    "claudeServiceAccountId": { "value": "" },
+    "claudeWorkspaceId": { "value": "" },
     "publicBaseUrl": { "value": "" }
   }
 }

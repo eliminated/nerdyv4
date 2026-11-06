@@ -490,3 +490,6 @@ appsettings.Development.local.json
 
 # Local dev test account for UI testing
 tools/dev-account.local.json
+
+# Filled-in Azure deployment parameters (account ids; copied from main.parameters.example.json)
+infra/main.parameters.json

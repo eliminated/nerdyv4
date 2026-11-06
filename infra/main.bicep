@@ -53,7 +53,13 @@ param microsoftClientId string = ''
 @secure()
 param microsoftClientSecret string = ''
 
-@description('Sender address on a domain verified in Azure Communication Services; empty saves emails to App_Data instead of sending them.')
+@description('Creates Azure Communication Services with an Azure-managed sender domain (DoNotReply@….azurecomm.net) and sends confirmation and password-reset emails through it. Off (and no emailFrom): emails are saved to App_Data instead.')
+param enableManagedEmail bool = false
+
+@description('Where Communication Services keeps its data at rest.')
+param communicationDataLocation string = 'Asia Pacific'
+
+@description('Your own sender address on a domain verified in Azure Communication Services, with acsConnectionString. Overrides the managed email above.')
 param emailFrom string = ''
 
 @description('Azure Communication Services connection string. Empty keeps the stored secret.')
@@ -63,18 +69,36 @@ param acsConnectionString string = ''
 @description('Public origin used in email links, e.g. a custom domain. Defaults to the web app\'s azurewebsites.net URL.')
 param publicBaseUrl string = ''
 
-@description('Turns on the AI review of non-emergency Ultra-Focus exits (needs the Anthropic API key below). Off: every exit is allowed.')
+@description('Turns on the AI review of non-emergency Ultra-Focus exits (needs Claude workload identity federation or the Anthropic API key below). Off: every exit is allowed.')
 param enableExitReview bool = false
 
-@description('Anthropic API key for the exit review. Empty keeps the stored secret.')
+@description('Anthropic API key for the exit review. Empty keeps the stored secret. Not used when Claude workload identity federation is configured below.')
 @secure()
 param anthropicApiKey string = ''
+
+// Claude API workload identity federation (no stored key): the web app's managed identity signs in to Claude.
+// Values come from the audience app registration and the Claude Console's Connect workload wizard; none are secret.
+@description('Identifier URI of the Claude federation audience app registration, e.g. api://<app id>.')
+param claudeFederationAudience string = ''
+
+@description('Claude Console federation rule id (fdrl_...).')
+param claudeFederationRuleId string = ''
+
+@description('Claude Console organization id.')
+param claudeOrganizationId string = ''
+
+@description('Claude Console service account id (svac_...).')
+param claudeServiceAccountId string = ''
+
+@description('Claude Console workspace id (wrkspc_...).')
+param claudeWorkspaceId string = ''
 
 var suffix = uniqueString(resourceGroup().id)
 var webAppName = '${appName}-api-${suffix}'
 var keyVaultName = take('${appName}kv${suffix}', 24)
 var databaseName = 'nerdy'
 var keyVaultSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e6'
+var keyVaultSecretsOfficerRoleId = 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7'
 
 // Secret names in Key Vault, referenced from app settings below.
 var jwtSecretName = 'jwt-signing-key'
@@ -138,16 +162,59 @@ resource microsoftSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (!e
   properties: { value: microsoftClientSecret }
 }
 
-resource acsSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (!empty(acsConnectionString)) {
+// Your own connection string wins; otherwise the managed Communication Service's key is stored (on every deployment).
+resource acsSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (!empty(acsConnectionString) || enableManagedEmail) {
   parent: keyVault
   name: acsSecretName
-  properties: { value: acsConnectionString }
+  properties: {
+    value: !empty(acsConnectionString) ? acsConnectionString : communicationService!.listKeys().primaryConnectionString
+  }
 }
 
 resource anthropicSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (!empty(anthropicApiKey)) {
   parent: keyVault
   name: anthropicSecretName
   properties: { value: anthropicApiKey }
+}
+
+// The SQL admin (you) may also manage secrets, so OAuth client secrets and API keys can be set with
+// `az keyvault secret set` instead of passing them through deployment parameters.
+resource adminSecretsOfficer 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: keyVault
+  name: guid(keyVault.id, sqlEntraAdminObjectId, keyVaultSecretsOfficerRoleId)
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', keyVaultSecretsOfficerRoleId)
+    principalId: sqlEntraAdminObjectId
+    principalType: sqlEntraAdminPrincipalType == 'Application' ? 'ServicePrincipal' : sqlEntraAdminPrincipalType
+  }
+}
+
+// ---------------------------------------------------------------- Email (Azure Communication Services)
+
+resource emailService 'Microsoft.Communication/emailServices@2023-04-01' = if (enableManagedEmail) {
+  name: '${appName}-email-${suffix}'
+  location: 'global'
+  properties: { dataLocation: communicationDataLocation }
+}
+
+// An Azure-managed domain needs no DNS setup; a custom domain can be added to the same email service later.
+resource emailDomain 'Microsoft.Communication/emailServices/domains@2023-04-01' = if (enableManagedEmail) {
+  parent: emailService
+  name: 'AzureManagedDomain'
+  location: 'global'
+  properties: {
+    domainManagement: 'AzureManaged'
+    userEngagementTracking: 'Disabled'
+  }
+}
+
+resource communicationService 'Microsoft.Communication/communicationServices@2023-04-01' = if (enableManagedEmail) {
+  name: '${appName}-acs-${suffix}'
+  location: 'global'
+  properties: {
+    dataLocation: communicationDataLocation
+    linkedDomains: [emailDomain.id]
+  }
 }
 
 // ---------------------------------------------------------------- Azure SQL
@@ -273,14 +340,24 @@ var microsoftSettings = empty(microsoftClientId) ? {} : {
   Authentication__Microsoft__ClientSecret: '${keyVaultReference}${microsoftSecretName})'
 }
 
-var emailSettings = empty(emailFrom) ? {} : {
-  Email__From: emailFrom
+var emailSender = !empty(emailFrom) ? emailFrom : (enableManagedEmail ? 'DoNotReply@${emailDomain!.properties.fromSenderDomain}' : '')
+
+var emailSettings = empty(emailSender) ? {} : {
+  Email__From: emailSender
   Email__AcsConnectionString: '${keyVaultReference}${acsSecretName})'
 }
 
-var exitReviewSettings = !enableExitReview ? {} : {
+var useClaudeFederation = !empty(claudeFederationAudience) && !empty(claudeFederationRuleId)
+
+var exitReviewSettings = !enableExitReview ? {} : (useClaudeFederation ? {
+  ExitReview__Federation__Audience: claudeFederationAudience
+  ExitReview__Federation__RuleId: claudeFederationRuleId
+  ExitReview__Federation__OrganizationId: claudeOrganizationId
+  ExitReview__Federation__ServiceAccountId: claudeServiceAccountId
+  ExitReview__Federation__WorkspaceId: claudeWorkspaceId
+} : {
   ExitReview__ApiKey: '${keyVaultReference}${anthropicSecretName})'
-}
+})
 
 resource appSettings 'Microsoft.Web/sites/config@2023-12-01' = {
   parent: webApp
@@ -315,3 +392,4 @@ output sqlServerName string = sqlServer.name
 output sqlServerFqdn string = sqlServer.properties.fullyQualifiedDomainName
 output databaseName string = database.name
 output keyVaultName string = keyVault.name
+output emailSender string = emailSender

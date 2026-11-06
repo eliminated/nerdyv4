@@ -1,8 +1,11 @@
 using System.Text.Json;
 using Anthropic;
+using Anthropic.Core;
+using Anthropic.Credentials;
 using Anthropic.Exceptions;
 using Anthropic.Models.Messages;
 using Microsoft.Extensions.Options;
+using Nerdy.Api.Infrastructure;
 using Nerdy.Contracts;
 
 namespace Nerdy.Api.Features.Focus;
@@ -11,8 +14,13 @@ public sealed class ExitReviewOptions
 {
     public const string Section = "ExitReview";
 
-    /// <summary>Anthropic API key. Empty disables reviews: every exit is allowed (fail open).</summary>
+    /// <summary>
+    /// Anthropic API key, for running the API on a PC. On Azure, <see cref="Federation"/> is used instead (no stored
+    /// key). With neither, reviews are off: every exit is allowed (fail open).
+    /// </summary>
     public string ApiKey { get; set; } = "";
+
+    public ExitReviewFederationOptions Federation { get; set; } = new();
 
     public string Model { get; set; } = "claude-haiku-5-5";
 
@@ -21,6 +29,24 @@ public sealed class ExitReviewOptions
 
     /// <summary>Reviews per user per hour; beyond that exits are allowed without review.</summary>
     public int PerUserPerHour { get; set; } = 20;
+}
+
+/// <summary>
+/// Workload identity federation: the web app's managed identity gets a Microsoft Entra token for
+/// <see cref="Audience"/>, which Anthropic exchanges for a short-lived access token under the federation rule.
+/// None of these values are secrets. See infra/README.md.
+/// </summary>
+public sealed class ExitReviewFederationOptions
+{
+    /// <summary>Identifier URI of the audience app registration, e.g. <c>api://&lt;app id&gt;</c>.</summary>
+    public string Audience { get; set; } = "";
+
+    public string RuleId { get; set; } = "";
+    public string OrganizationId { get; set; } = "";
+    public string ServiceAccountId { get; set; } = "";
+    public string WorkspaceId { get; set; } = "";
+
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(Audience) && !string.IsNullOrWhiteSpace(RuleId);
 }
 
 public interface IExitReviewer
@@ -69,13 +95,30 @@ public sealed class ClaudeExitReviewer : IExitReviewer
     private readonly ExitReviewOptions _options;
     private readonly ILogger<ClaudeExitReviewer> _logger;
     private readonly AnthropicClient? _client;
+    private readonly ManagedIdentityTokenProvider? _identityTokens;
 
     public ClaudeExitReviewer(IOptions<ExitReviewOptions> options, ILogger<ClaudeExitReviewer> logger)
     {
         _options = options.Value;
         _logger = logger;
-        if (!string.IsNullOrWhiteSpace(_options.ApiKey))
-            _client = new AnthropicClient { ApiKey = _options.ApiKey, Timeout = TimeSpan.FromSeconds(_options.TimeoutSeconds), MaxRetries = 1 };
+        var timeout = TimeSpan.FromSeconds(_options.TimeoutSeconds);
+        if (_options.Federation is { IsConfigured: true } federation)
+        {
+            _identityTokens = new ManagedIdentityTokenProvider(federation.Audience);
+            var credentials = new WorkloadIdentityCredentials(new WorkloadIdentityOptions
+            {
+                FederationRuleId = federation.RuleId,
+                OrganizationId = federation.OrganizationId,
+                ServiceAccountId = federation.ServiceAccountId,
+                WorkspaceId = federation.WorkspaceId,
+                IdentityTokenProvider = _identityTokens
+            });
+            _client = new AnthropicClient(new ClientOptions { Credentials = credentials, Timeout = timeout, MaxRetries = 1 });
+        }
+        else if (!string.IsNullOrWhiteSpace(_options.ApiKey))
+        {
+            _client = new AnthropicClient { ApiKey = _options.ApiKey, Timeout = timeout, MaxRetries = 1 };
+        }
     }
 
     public bool IsEnabled => _client is not null;
@@ -124,6 +167,16 @@ public sealed class ClaudeExitReviewer : IExitReviewer
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
             _logger.LogWarning("Exit review timed out; allowing the exit.");
+        }
+        catch (WorkloadIdentityException ex)
+        {
+            // Anthropic rejected the federated sign-in; its Workload identity → Authentication events page says why.
+            _logger.LogError(ex, "Couldn't sign in to the Claude API with workload identity federation; allowing the exit. " +
+                "Identity token presented: {IdentityTokenClaims}", _identityTokens?.LastTokenClaims ?? "unknown");
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Couldn't get a managed identity token for the Claude API; allowing the exit.");
         }
         catch (AnthropicRateLimitException)
         {

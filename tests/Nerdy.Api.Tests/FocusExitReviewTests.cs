@@ -67,6 +67,62 @@ public sealed class FocusExitReviewTests(NerdyApiFactory factory) : IClassFixtur
     }
 
     [Fact]
+    public void Workload_identity_federation_turns_reviews_on_without_a_key()
+    {
+        // Creating the client fetches no token; the managed identity is only asked when a review is sent.
+        var federated = new ClaudeExitReviewer(Options.Create(new ExitReviewOptions
+        {
+            Federation = new ExitReviewFederationOptions
+            {
+                Audience = "api://00000000-0000-0000-0000-000000000000",
+                RuleId = "fdrl_test",
+                OrganizationId = "00000000-0000-0000-0000-000000000000",
+                ServiceAccountId = "svac_test",
+                WorkspaceId = "wrkspc_test"
+            }
+        }), NullLogger<ClaudeExitReviewer>.Instance);
+        var unconfigured = new ClaudeExitReviewer(Options.Create(new ExitReviewOptions
+        {
+            Federation = new ExitReviewFederationOptions { Audience = "api://00000000-0000-0000-0000-000000000000" }
+        }), NullLogger<ClaudeExitReviewer>.Instance);
+
+        Assert.True(federated.IsEnabled);
+        Assert.False(unconfigured.IsEnabled);
+    }
+
+    [Fact]
+    public async Task A_failed_federated_sign_in_allows_the_exit()
+    {
+        // Point the managed identity endpoint at a closed local port: getting the identity token fails at once.
+        Environment.SetEnvironmentVariable("IDENTITY_ENDPOINT", "http://127.0.0.1:9/msi/token");
+        Environment.SetEnvironmentVariable("IDENTITY_HEADER", "test");
+        try
+        {
+            var reviewer = new ClaudeExitReviewer(Options.Create(new ExitReviewOptions
+            {
+                Federation = new ExitReviewFederationOptions
+                {
+                    Audience = "api://00000000-0000-0000-0000-000000000000",
+                    RuleId = "fdrl_test",
+                    OrganizationId = "00000000-0000-0000-0000-000000000000",
+                    ServiceAccountId = "svac_test",
+                    WorkspaceId = "wrkspc_test"
+                }
+            }), NullLogger<ClaudeExitReviewer>.Instance);
+
+            var result = await reviewer.ReviewAsync(Request(ExitReason.Other), CancellationToken.None);
+
+            Assert.True(result.Allowed);
+            Assert.False(result.Reviewed);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("IDENTITY_ENDPOINT", null);
+            Environment.SetEnvironmentVariable("IDENTITY_HEADER", null);
+        }
+    }
+
+    [Fact]
     public async Task A_stay_decision_is_returned_to_the_app()
     {
         await using var app = factory.WithWebHostBuilder(b => b.ConfigureTestServices(s =>
