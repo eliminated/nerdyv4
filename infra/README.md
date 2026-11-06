@@ -6,8 +6,9 @@
 |---|---|
 | App Service plan (Linux, **B1** by default) + Web App | .NET 10, HTTPS only, Always On, HTTP/2, FTP disabled, system-assigned managed identity |
 | Azure SQL logical server + **serverless** database `nerdy` | General Purpose Gen5, 0.5–1 vCore, auto-pause after 60 min, 32 GB. **Microsoft Entra-only authentication** (no SQL logins); the web app connects with its managed identity |
-| Key Vault (RBAC) | Holds the JWT signing key and the Google / Microsoft / ACS / Anthropic secrets. App settings reference them (`@Microsoft.KeyVault(...)`); the web app identity gets *Key Vault Secrets User* |
+| Key Vault (RBAC) | Holds the JWT signing key and the Google / Microsoft / ACS / Anthropic secrets. App settings reference them (`@Microsoft.KeyVault(...)`); the web app identity gets *Key Vault Secrets User*, the SQL Entra admin (you) *Key Vault Secrets Officer* so you can set secrets yourself |
 | Application Insights + Log Analytics | The API sends traces, metrics and logs via OpenTelemetry when `APPLICATIONINSIGHTS_CONNECTION_STRING` is set |
+| Email Communication Service + Communication Service (with `enableManagedEmail`) | Azure-managed sender domain (`DoNotReply@….azurecomm.net`); its connection string goes straight into Key Vault |
 
 App settings written by the template: `ASPNETCORE_ENVIRONMENT=Production`, `Database__Provider=SqlServer`,
 `Jwt__SigningKey` (Key Vault), `App__PublicBaseUrl`, `APPLICATIONINSIGHTS_CONNECTION_STRING`, and — only when you
@@ -25,7 +26,7 @@ string `Nerdy` (type SQLAzure) uses `Authentication=Active Directory Managed Ide
 ## 1. Deploy the infrastructure
 
 ```powershell
-az group create --name rg-nerdy --location westeurope
+az group create --name rg-nerdy --location southeastasia
 
 Copy-Item infra/main.parameters.example.json infra/main.parameters.json   # then edit it
 # Your own object id for sqlEntraAdminObjectId (and your UPN for sqlEntraAdminLogin):
@@ -54,7 +55,18 @@ az deployment group show -g rg-nerdy -n main --query properties.outputs
 ```
 
 Optional parameters: `appServiceSku`, `sqlAutoPauseDelayMinutes` (min 15), `sqlMaxVCores`, `sqlUseFreeOffer`
-(Azure SQL free offer, one database per subscription), `publicBaseUrl` (custom domain for email links).
+(Azure SQL free offer: a monthly amount of free compute and storage; when it's used up the database pauses until the
+next month), `enableManagedEmail` (see 6), `publicBaseUrl` (custom domain for email links).
+
+Secrets can be passed as `--parameters <name>=<value>` or, so they never pass through the deployment, written to
+Key Vault directly from your own terminal (you're a *Key Vault Secrets Officer* on it):
+
+```powershell
+az keyvault secret set --vault-name <keyVaultName> --name <secret-name> --value "<value>"
+az webapp restart -g rg-nerdy -n <webAppName>   # picks up the new value
+```
+
+Secret names: `google-client-secret`, `microsoft-client-secret`, `anthropic-api-key`, `acs-connection-string`.
 
 ## 2. One-time: let the web app into the database
 
@@ -129,9 +141,13 @@ dotnet user-secrets set "Authentication:Google:ClientSecret" "<secret>" --projec
 ## 6. Email (optional)
 
 Without email configuration the API saves messages to `App_Data/emails` on the server and logs a warning. To send
-confirmation and password-reset emails, create an *Email Communication Service* with a domain (an Azure-managed
-`*.azurecomm.net` domain works for testing), connect it to a *Communication Service*, and redeploy with
-`emailFrom=DoNotReply@<your-domain>` and `--parameters acsConnectionString="<Communication Service connection string>"`.
+confirmation and password-reset emails, deploy with `enableManagedEmail=true`: the template creates an *Email
+Communication Service* with an Azure-managed `*.azurecomm.net` domain, links it to a *Communication Service*, stores
+its connection string in Key Vault and sets the sender to `DoNotReply@<that domain>` (output `emailSender`).
+Azure-managed domains have low sending limits, which suit a beta; for more, add your own domain to the email service.
+
+To use your own Communication Service instead, deploy with `emailFrom=DoNotReply@<your-domain>` and
+`--parameters acsConnectionString="<Communication Service connection string>"`.
 
 ## 7. AI review of Ultra-Focus exits (optional)
 
@@ -139,8 +155,38 @@ When a student leaves Ultra-Focus early for an "urgent school or work matter" or
 Claude (Anthropic) whether it can wait until the session ends. Medical and family emergencies are never reviewed,
 and every failure (no key, timeout, rate limit, refusal) allows the exit. Without a key every exit is allowed.
 
-Create a key in the Anthropic Console, then redeploy with `enableExitReview=true` and
-`--parameters anthropicApiKey="<key>"`. Later deployments keep the stored key when `anthropicApiKey` is omitted.
+**Recommended: workload identity federation (no stored key).** The web app's managed identity gets a Microsoft
+Entra token and Anthropic exchanges it for a short-lived access token (see Anthropic's
+[Use WIF with Microsoft Entra ID](https://platform.claude.com/docs/en/manage-claude/wif-providers/azure)).
+
+1. Register the token audience once per tenant (an app registration with v2.0 tokens and a service principal):
+
+   ```powershell
+   $appId = az ad app create --display-name "Nerdy Claude federation" --query appId -o tsv
+   $objId = az ad app show --id $appId --query id -o tsv
+   '{"identifierUris":["api://' + $appId + '"],"api":{"requestedAccessTokenVersion":2}}' | Set-Content audience.json
+   az rest --method PATCH --uri "https://graph.microsoft.com/v1.0/applications/$objId" --headers "Content-Type=application/json" --body "@audience.json"
+   az ad sp create --id $appId
+   ```
+
+2. Claude Console → *Settings → Workload identity*:
+   - **Issuer**: issuer URL `https://login.microsoftonline.com/<tenant id>/v2.0` (the v2.0 issuer, not
+     `sts.windows.net`), single-use tokens **off** (managed identity tokens carry no `jti`), and maximum token lifetime
+     **90000** seconds. Managed identity tokens are valid for 24 hours and Entra backdates their `iat` by 5 minutes,
+     so `exp − iat` is 86700 s; a limit of 86400 or less rejects them with a bare `401 Authentication failed`.
+   - **Rule** (pattern match): *Expected audience* = `$appId`, the bare GUID (the token's `aud`, no `api://`);
+     *Subject pattern* = the web app's `webAppPrincipalId` output (a managed identity's `sub` is its object id; replace
+     the `system:serviceaccount:…` example); additional claim `tid` = your tenant id; target = a service account in a
+     single workspace.
+   - When an exchange is rejected, *Workload identity → Authentication events* names the failed check, and the API
+     logs the presented token's `aud`, `iss`, `oid`, `tid` and lifetime (never the token) next to the error.
+3. Redeploy with `enableExitReview=true`, `claudeFederationAudience=api://<appId>`, and the wizard's
+   `claudeFederationRuleId` (`fdrl_…`), `claudeOrganizationId`, `claudeServiceAccountId` (`svac_…`) and
+   `claudeWorkspaceId` (`wrkspc_…`). None of these are secrets.
+
+**Alternatively, an API key:** create one in the Claude Console scoped to a single workspace (keys for several
+workspaces need a workspace header the API doesn't send), then redeploy with `enableExitReview=true` and store the
+key as the `anthropic-api-key` secret. Later deployments keep the stored key when `anthropicApiKey` is omitted.
 Optional app settings: `ExitReview__Model` (default `claude-haiku-5-5`), `ExitReview__TimeoutSeconds` (8) and
 `ExitReview__PerUserPerHour` (20 reviews per person per hour; beyond that exits are allowed unreviewed).
 

@@ -26,6 +26,8 @@
   <ItemGroup>
     <Content Include="Assets\**" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Debug builds talk to the API running on this PC (src/Nerdy.Api); Release builds to the one on Azure. -->
+    <Content Include="appsettings.Development.json" CopyToOutputDirectory="PreserveNewest" Condition="'$(Configuration)' == 'Debug'" />
   </ItemGroup>
 
   <ItemGroup>
