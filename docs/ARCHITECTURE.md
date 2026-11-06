@@ -12,7 +12,7 @@ Nerdy.slnx
 src/
   Nerdy.Contracts/   net10.0               DTOs + enums shared by the API and the desktop app (wire format)
   Nerdy.Core/        net10.0               Pure client-side domain logic: recurrence, schedule planner, stats, formatting
-  Nerdy.Focus/       net10.0-windows       Focus enforcement engine (Win32): app hiding/closing, keyboard lock, website allow-list proxy
+  Nerdy.Focus/       net10.0-windows       Focus enforcement engine (Win32): finds app windows and hides or closes the ones not allowed
   Nerdy.Api/         net10.0               ASP.NET Core API (Azure App Service + Azure SQL)
   Nerdy.App/         net10.0-windows10.0.26100.0  WinUI 3 desktop app (unpackaged, self-contained Windows App SDK 2.5)
 tests/
