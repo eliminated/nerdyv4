@@ -11,6 +11,29 @@ public abstract record SyncItemDto
     public bool IsDeleted { get; init; }
 }
 
+/// <summary>
+/// What is kept of a deleted item: its id, when it was deleted and that it was, so the deletion still reaches every
+/// device. Everything the user wrote or scheduled in it is erased, on the server and on each PC (the privacy policy in
+/// site/privacy promises this).
+/// </summary>
+public static class SyncTombstone
+{
+    public static T Of<T>(T item) where T : SyncItemDto
+    {
+        SyncItemDto tombstone = item switch
+        {
+            TopicDto => new TopicDto { Id = item.Id, UpdatedAt = item.UpdatedAt, IsDeleted = true },
+            SubtopicDto => new SubtopicDto { Id = item.Id, UpdatedAt = item.UpdatedAt, IsDeleted = true },
+            CalendarEventDto => new CalendarEventDto { Id = item.Id, UpdatedAt = item.UpdatedAt, IsDeleted = true },
+            ReminderDto => new ReminderDto { Id = item.Id, UpdatedAt = item.UpdatedAt, IsDeleted = true },
+            NoteDto => new NoteDto { Id = item.Id, UpdatedAt = item.UpdatedAt, IsDeleted = true },
+            FocusSessionDto => new FocusSessionDto { Id = item.Id, UpdatedAt = item.UpdatedAt, IsDeleted = true },
+            _ => throw new ArgumentException($"No tombstone defined for {item.GetType().Name}.", nameof(item)),
+        };
+        return (T)tombstone;
+    }
+}
+
 public sealed record TopicDto : SyncItemDto
 {
     public string Name { get; init; } = "";

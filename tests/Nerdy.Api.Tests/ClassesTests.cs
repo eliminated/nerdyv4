@@ -138,16 +138,17 @@ public sealed class ClassesTests(NerdyApiFactory factory) : IClassFixture<NerdyA
         var shared = await annUser.Client.PutAsJsonAsync($"/api/classes/{classroom.Id}/sharing", new SetFocusSharingRequest { Share = true });
         Assert.True((await shared.ReadAsync<ClassroomDto>()).SharesFocus);
 
-        // Range: three local days in UTC+2, Oct 1-3. Sessions are bucketed by their local start day.
+        // Range: three local days in UTC+2, starting tomorrow so every session is after sharing was turned on.
+        // Sessions are bucketed by their local start day.
         var offset = TimeSpan.FromHours(2);
-        var from = new DateTimeOffset(2026, 10, 1, 0, 0, 0, offset);
+        var from = new DateTimeOffset(DateTimeOffset.UtcNow.ToOffset(offset).Date.AddDays(1), offset);
         var to = from.AddDays(3);
         await annUser.Client.SyncAsync(0, new SyncChanges
         {
             FocusSessions =
             [
                 Session(from.AddHours(9), 1500, FocusOutcome.Completed),
-                Session(from.AddHours(23.5), 600, FocusOutcome.EndedEarly),        // Oct 1, 23:30 local (21:30 UTC)
+                Session(from.AddHours(23.5), 600, FocusOutcome.EndedEarly),        // day 1, 23:30 local (21:30 UTC)
                 Session(from.AddDays(2).AddHours(8), 3000, FocusOutcome.Completed),
                 Session(from.AddDays(-1), 9000, FocusOutcome.Completed),           // before the range
                 Session(from.AddHours(10), 9000, FocusOutcome.Completed) with { IsDeleted = true },
@@ -190,6 +191,42 @@ public sealed class ClassesTests(NerdyApiFactory factory) : IClassFixture<NerdyA
         var tooLong = await teacher.Client.GetAsync(QueryHelpers.AddQueryString($"/api/classes/{classroom.Id}/progress",
             new Dictionary<string, string?> { ["from"] = from.ToString("O"), ["to"] = from.AddDays(121).ToString("O") }));
         Assert.Contains("to", await tooLong.ReadValidationErrorsAsync());
+    }
+
+    [Fact]
+    public async Task Progress_never_shows_sessions_from_before_sharing_was_turned_on()
+    {
+        var teacher = await factory.RegisterTeacherAsync();
+        var classroom = await CreateClassAsync(teacher, "Biology");
+        var student = await factory.RegisterAsync("Cara");
+        var now = DateTimeOffset.UtcNow;
+        // Studied before joining the class and after joining, but before turning sharing on.
+        await student.Client.SyncAsync(0, new SyncChanges { FocusSessions = [Session(now.AddDays(-3), 3000, FocusOutcome.Completed)] });
+        await JoinAsync(student, classroom.JoinCode!);
+        await student.Client.SyncAsync(0, new SyncChanges { FocusSessions = [Session(now.AddMinutes(-30), 1200, FocusOutcome.Completed)] });
+
+        var url = QueryHelpers.AddQueryString($"/api/classes/{classroom.Id}/progress", new Dictionary<string, string?>
+        {
+            ["from"] = now.AddDays(-7).ToString("O"),
+            ["to"] = now.AddDays(1).ToString("O"),
+        });
+        async Task<StudentProgressDto> ProgressAsync() => (await teacher.Client.GetAsync<ClassProgressDto>(url)).Students.Single();
+        Task SetSharingAsync(bool share) =>
+            student.Client.PutAsJsonAsync($"/api/classes/{classroom.Id}/sharing", new SetFocusSharingRequest { Share = share });
+
+        await SetSharingAsync(true);
+        var justShared = await ProgressAsync();
+        Assert.True(justShared.SharesFocus);
+        Assert.Equal((0, 0), (justShared.Sessions, justShared.FocusMinutes));
+
+        await student.Client.SyncAsync(0, new SyncChanges { FocusSessions = [Session(DateTimeOffset.UtcNow, 600, FocusOutcome.Completed)] });
+        var afterSharing = await ProgressAsync();
+        Assert.Equal((1, 10), (afterSharing.Sessions, afterSharing.FocusMinutes));
+
+        // Turning sharing off and on again starts over.
+        await SetSharingAsync(false);
+        await SetSharingAsync(true);
+        Assert.Equal(0, (await ProgressAsync()).Sessions);
     }
 
     [Fact]

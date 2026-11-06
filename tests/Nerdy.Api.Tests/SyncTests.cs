@@ -106,6 +106,37 @@ public sealed class SyncTests(NerdyApiFactory factory) : IClassFixture<NerdyApiF
     }
 
     [Fact]
+    public async Task A_deleted_item_keeps_only_its_tombstone_even_when_pushed_with_content()
+    {
+        var user = await factory.RegisterAsync();
+        var note = new NoteDto
+        {
+            Id = Guid.NewGuid(), UpdatedAt = T0, Title = "Diary", BodyRtf = @"{\rtf1 Secret}", BodyText = "Secret",
+            Checklist = [new ChecklistItemDto { Text = "Private" }],
+        };
+        var session = new FocusSessionDto
+        {
+            Id = Guid.NewGuid(), UpdatedAt = T0, Task = "Essay", Mode = FocusMode.Ultra, PlannedSeconds = 1500, ActualSeconds = 300,
+            StartedAt = T0, EndedAt = T0.AddMinutes(5), Outcome = FocusOutcome.EmergencyExit, ExitReason = ExitReason.Other, ExitNote = "Bored",
+        };
+        var v1 = (await user.Client.SyncAsync(0, new SyncChanges { Notes = [note], FocusSessions = [session] })).Version;
+
+        // An older app deletes by pushing the whole item with IsDeleted set.
+        var deletedAt = T0.AddHours(1);
+        await user.Client.SyncAsync(v1, new SyncChanges
+        {
+            Notes = [note with { IsDeleted = true, UpdatedAt = deletedAt }],
+            FocusSessions = [session with { IsDeleted = true, UpdatedAt = deletedAt }],
+        });
+
+        var everything = (await user.Client.SyncAsync(0)).Changes;
+        var pulledNote = Assert.Single(everything.Notes);
+        Assert.Equal(SyncTombstone.Of(note with { UpdatedAt = deletedAt }) with { Checklist = pulledNote.Checklist }, pulledNote);
+        Assert.Empty(pulledNote.Checklist);
+        Assert.Equal(SyncTombstone.Of(session with { UpdatedAt = deletedAt }), Assert.Single(everything.FocusSessions));
+    }
+
+    [Fact]
     public async Task A_row_id_owned_by_another_user_is_rejected_and_not_leaked()
     {
         var alice = await factory.RegisterAsync();

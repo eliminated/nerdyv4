@@ -9,7 +9,8 @@ namespace Nerdy.Api.Features.Sync;
 /// The sync protocol from docs/ARCHITECTURE.md, in one transaction:
 /// 1. bump the user's version once (optimistic concurrency on <see cref="UserSyncState.Version"/>) → v;
 /// 2. upsert each pushed row by last-write-wins on UpdatedAt (ties go to the client), stamping applied rows with v;
-///    rows that are older than the server copy, or whose id belongs to another user, are rejected;
+///    rows that are older than the server copy, or whose id belongs to another user, are rejected; deleted rows are
+///    stored as tombstones (<see cref="SyncTombstone"/>), their content erased;
 /// 3. return every row with Version &gt; SinceVersion plus the server copy of each rejected row of this user.
 /// </summary>
 public sealed class SyncService(NerdyDbContext db, TimeProvider time, ILogger<SyncService> logger)
@@ -175,7 +176,8 @@ public sealed class SyncService(NerdyDbContext db, TimeProvider time, ILogger<Sy
                     continue;
                 }
 
-                type.Apply(row, dto);
+                // A deleted item keeps only its tombstone, whatever content the client still sent with it.
+                type.Apply(row, dto.IsDeleted ? SyncTombstone.Of(dto) : dto);
                 row.Version = Version;
             }
 

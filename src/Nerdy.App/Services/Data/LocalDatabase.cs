@@ -122,6 +122,10 @@ public sealed class LocalDatabase : IAsyncDisposable
     {
         var conn = new SqliteConnection(_connectionString);
         await conn.OpenAsync();
+        // Overwrite replaced and deleted content in the file instead of leaving it in free pages.
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "PRAGMA secure_delete = ON";
+        await cmd.ExecuteNonQueryAsync();
         return conn;
     }
 

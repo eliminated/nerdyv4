@@ -37,7 +37,8 @@
                 <TextBox Width="170" PlaceholderText="Class code" CharacterCasing="Upper" MaxLength="12" KeyDown="OnJoinKeyDown"
                          Text="{x:Bind ViewModel.JoinCodeInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Class code" />
                 <Button Grid.Column="1" Style="{StaticResource NerdyOutlineButtonStyle}" Content="Join" Command="{x:Bind ViewModel.JoinCommand}"
-                        IsEnabled="{x:Bind ViewModel.CanJoin, Mode=OneWay}" AutomationProperties.Name="Join class" />
+                        IsEnabled="{x:Bind ViewModel.CanJoin, Mode=OneWay}" AutomationProperties.Name="Join class"
+                        ToolTipService.ToolTip="The class's teacher will see your name and email address." />
             </Grid>
             <Button Grid.Column="2" Style="{StaticResource NerdyAccentButtonStyle}" Command="{x:Bind ViewModel.CreateClassCommand}"
                     Visibility="{x:Bind ViewModel.CanCreate, Mode=OneWay}" AutomationProperties.Name="New class">
@@ -58,7 +59,7 @@
                     <StackPanel Spacing="4">
                         <TextBlock Text="Join your class" FontSize="20" FontWeight="SemiBold" Style="{StaticResource NerdyTextBase}" />
                         <TextBlock Style="{StaticResource NerdySecondaryWrapStyle}"
-                                   Text="Enter the code your teacher gave you. Class assignments then show up here, in Reminders and on Home." />
+                                   Text="Enter the code your teacher gave you. Class assignments then show up here, in Reminders and on Home. Your teacher will see your name and email address." />
                     </StackPanel>
                     <Grid ColumnSpacing="8">
                         <Grid.ColumnDefinitions>
@@ -197,7 +198,7 @@
                             <StackPanel Grid.Column="1" Spacing="2">
                                 <TextBlock Text="{x:Bind ViewModel.SharingTitle, Mode=OneWay}" Style="{StaticResource NerdyStrongStyle}" />
                                 <TextBlock Style="{StaticResource NerdyCaptionWrapStyle}"
-                                           Text="If you turn this on, your teacher sees how many minutes you focused each day, how many sessions you did and how many ran as planned. They never see your tasks, notes, topics or exit reasons. Your teacher always sees which class assignments you've marked done." />
+                                           Text="If you turn this on, your teacher sees how many minutes you focused each day, how many sessions you did and how many ran as planned, counting only sessions from the moment you turn it on. They never see your tasks, notes, topics or exit reasons. Your teacher always sees your name, email address and which class assignments you've marked done." />
                             </StackPanel>
                             <ToggleSwitch Grid.Column="2" IsOn="{x:Bind ViewModel.SharesFocus, Mode=TwoWay}" OnContent="" OffContent="" MinWidth="0" VerticalAlignment="Top"
                                           AutomationProperties.Name="Share my focus stats with my teacher" />

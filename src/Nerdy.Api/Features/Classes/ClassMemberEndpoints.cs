@@ -84,7 +84,8 @@ internal static class ClassMemberEndpoints
     }
 
     private static async Task<Results<Ok<ClassroomDto>, ProblemHttpResult>> SetSharingAsync(
-        Guid id, SetFocusSharingRequest request, ClaimsPrincipal principal, NerdyDbContext db, CancellationToken cancellationToken)
+        Guid id, SetFocusSharingRequest request, ClaimsPrincipal principal, NerdyDbContext db, TimeProvider time,
+        CancellationToken cancellationToken)
     {
         var userId = principal.GetUserId();
         var membership = await db.FindMembershipAsync(id, userId, cancellationToken);
@@ -96,6 +97,12 @@ internal static class ClassMemberEndpoints
         if (membership.Role != ClassRole.Student)
         {
             return ClassProblems.StudentsOnly();
+        }
+
+        // Sharing covers sessions from the moment it's turned on, never earlier history.
+        if (request.Share != membership.SharesFocus)
+        {
+            membership.SharesFocusSince = request.Share ? time.GetUtcNow() : null;
         }
 
         membership.SharesFocus = request.Share;

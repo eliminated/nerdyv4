@@ -67,6 +67,8 @@ public sealed class DataService(IClock clock, ILogger<DataService> logger)
         _preferencesDirty = false;
         _preferences = new Preferences();
 
+        // Deleted items saved before tombstones existed still hold their content: erase it now.
+        var erased = new List<LocalDatabase.Row>();
         foreach (var row in await db.LoadAllAsync())
         {
             try
@@ -77,9 +79,9 @@ public sealed class DataService(IClock clock, ILogger<DataService> logger)
                     _preferencesDirty = row.Dirty;
                     _preferences = Preferences.Deserialize(_preferencesDto?.Json);
                 }
-                else
+                else if (Sets.FirstOrDefault(s => s.Kind == row.Kind)?.LoadJson(row.Json, row.Dirty) is { } tombstone)
                 {
-                    Sets.FirstOrDefault(s => s.Kind == row.Kind)?.LoadJson(row.Json, row.Dirty);
+                    erased.Add(row with { Json = tombstone });
                 }
             }
             catch (JsonException ex)
@@ -92,6 +94,7 @@ public sealed class DataService(IClock clock, ILogger<DataService> logger)
         UserId = userId;
         _writes = Channel.CreateUnbounded<Func<Task>>(new UnboundedChannelOptions { SingleReader = true });
         _writer = Task.Run(() => DrainWritesAsync(_writes.Reader));
+        if (erased.Count > 0) Enqueue(d => d.UpsertAsync(erased));
         Changed?.Invoke(this, new DataChangedEventArgs(DataKinds.All, fromSync: false));
     }
 
@@ -138,7 +141,8 @@ public sealed class DataService(IClock clock, ILogger<DataService> logger)
         return stamped;
     }
 
-    public void Delete<T>(T item) where T : SyncItemDto => Save((T)((SyncItemDto)item with { IsDeleted = true }));
+    /// <summary>Keeps only a tombstone, so the deletion syncs but the content is gone from this PC and the server.</summary>
+    public void Delete<T>(T item) where T : SyncItemDto => Save(SyncTombstone.Of(item));
 
     /// <summary>Saves several edits as one change notification (e.g. a whole study block).</summary>
     public void SaveMany<T>(IEnumerable<T> items) where T : SyncItemDto
@@ -210,8 +214,9 @@ public sealed class DataService(IClock clock, ILogger<DataService> logger)
             foreach (var p in sent)
                 if (set.ClearDirtyIfUnchanged(p))
                     rows.Add(new LocalDatabase.Row(set.Kind, p.Id.ToString(), JsonSerializer.Serialize(set.Raw(p.Id)!, Json), false));
-            foreach (var r in received)
+            foreach (var remote in received)
             {
+                var r = remote.IsDeleted ? SyncTombstone.Of(remote) : remote;
                 if (!set.ApplyRemote(r)) continue;
                 rows.Add(new LocalDatabase.Row(set.Kind, r.Id.ToString(), JsonSerializer.Serialize(r, Json), false));
                 kinds |= set.Changes;
@@ -270,7 +275,8 @@ public sealed class DataService(IClock clock, ILogger<DataService> logger)
     {
         string Kind { get; }
         void Clear();
-        void LoadJson(string json, bool dirty);
+        /// <summary>Returns the tombstone's JSON when the row was a deleted item that still held content.</summary>
+        string? LoadJson(string json, bool dirty);
     }
 
     private sealed class EntitySet<T>(string kind, DataKinds changes) : IEntitySet where T : SyncItemDto
@@ -287,9 +293,18 @@ public sealed class DataService(IClock clock, ILogger<DataService> logger)
 
         public void Clear() { _items.Clear(); _dirty.Clear(); }
 
-        public void LoadJson(string json, bool dirty)
+        public string? LoadJson(string json, bool dirty)
         {
-            if (JsonSerializer.Deserialize<T>(json, Json) is { } item) Put(item, dirty);
+            if (JsonSerializer.Deserialize<T>(json, Json) is not { } item) return null;
+            if (!item.IsDeleted)
+            {
+                Put(item, dirty);
+                return null;
+            }
+            var tombstone = SyncTombstone.Of(item);
+            Put(tombstone, dirty);
+            var erased = JsonSerializer.Serialize(tombstone, Json);
+            return erased == json ? null : erased;
         }
 
         public void Put(T item, bool dirty)

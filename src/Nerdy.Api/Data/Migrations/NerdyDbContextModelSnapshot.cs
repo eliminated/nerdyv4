@@ -378,6 +378,9 @@ namespace Nerdy.Api.Data.Migrations
                     b.Property<bool>("SharesFocus")
                         .HasColumnType("bit");
 
+                    b.Property<DateTimeOffset?>("SharesFocusSince")
+                        .HasColumnType("datetimeoffset");
+
                     b.HasKey("ClassroomId", "UserId");
 
                     b.HasIndex("UserId");
