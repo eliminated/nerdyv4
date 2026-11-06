@@ -10,5 +10,8 @@
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/eliminated/nerdyv4</RepositoryUrl>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!-- A PackageVersion entry also pins that package when it arrives transitively
+         (used to lift vulnerable transitive packages; see Directory.Packages.props). -->
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
 </Project>
