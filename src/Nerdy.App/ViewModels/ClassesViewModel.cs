@@ -424,7 +424,7 @@ public sealed partial class ClassesViewModel : ObservableObject, INavigationAwar
             JoinCodeInput = "";
             _selectedId = joined.Id;
             RebuildCards();
-            _toasts.Show($"You joined {joined.Name}", ToastKind.Success);
+            _toasts.Show($"You joined {joined.Name}. {joined.TeacherName} can see your name and email address.", ToastKind.Success);
         });
     }
 

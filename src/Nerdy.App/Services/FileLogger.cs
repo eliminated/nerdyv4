@@ -3,24 +3,54 @@ using Microsoft.Extensions.Logging;
 
 namespace Nerdy.App.Services;
 
-/// <summary>Minimal daily-rolling file logger (%LOCALAPPDATA%\Nerdy\logs) so problems can be diagnosed on users' PCs.</summary>
+/// <summary>
+/// Minimal daily-rolling file logger (%LOCALAPPDATA%\Nerdy\logs) so problems can be diagnosed on users' PCs.
+/// Files older than <see cref="KeepFor"/> are deleted when a new day's file starts.
+/// </summary>
 public sealed class FileLoggerProvider(string directory) : ILoggerProvider
 {
+    /// <summary>How long log files are kept (the privacy policy in site/privacy promises this).</summary>
+    public static readonly TimeSpan KeepFor = TimeSpan.FromDays(14);
+
+    private const string FilePattern = "nerdy-*.log";
+
     private readonly ConcurrentDictionary<string, FileLogger> _loggers = new();
     private readonly object _gate = new();
+    private string? _currentPath;
 
     public ILogger CreateLogger(string categoryName) => _loggers.GetOrAdd(categoryName, c => new FileLogger(this, c));
 
     public void Dispose() => _loggers.Clear();
+
+    /// <summary>Deletes every log file, e.g. after the account they mention was deleted.</summary>
+    public static void DeleteLogs(string directory)
+    {
+        foreach (var file in Directory.EnumerateFiles(directory, FilePattern)) File.Delete(file);
+    }
 
     private void Write(string line)
     {
         var path = Path.Combine(directory, $"nerdy-{DateTime.Now:yyyyMMdd}.log");
         lock (_gate)
         {
-            try { File.AppendAllText(path, line + Environment.NewLine); }
-            catch (IOException) { /* logging must never crash the app */ }
+            try
+            {
+                if (path != _currentPath)
+                {
+                    _currentPath = path;
+                    DeleteOldLogs();
+                }
+                File.AppendAllText(path, line + Environment.NewLine);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { /* logging must never crash the app */ }
         }
+    }
+
+    private void DeleteOldLogs()
+    {
+        var cutoff = DateTime.Now - KeepFor;
+        foreach (var file in Directory.EnumerateFiles(directory, FilePattern))
+            if (File.GetLastWriteTime(file) < cutoff) File.Delete(file);
     }
 
     private sealed class FileLogger(FileLoggerProvider provider, string category) : ILogger

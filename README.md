@@ -31,6 +31,10 @@ dotnet test tests/Nerdy.Api.Tests
 
 How the pieces fit together is described in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md); deploying to Azure is covered in [infra/README.md](infra/README.md).
 
+## PRIVACY
+
+What Nerdy collects and where it goes is described in the [privacy policy](https://nerdy.nicholic.com/privacy/). The website (homepage and privacy policy) lives in [`site/`](site/) and is published to GitHub Pages by [`.github/workflows/pages.yml`](.github/workflows/pages.yml); when a change affects what Nerdy collects, stores or sends, update the policy in the same pull request.
+
 ## LICENSE
 
 Copyright (C) 2026 Nerdy contributors.

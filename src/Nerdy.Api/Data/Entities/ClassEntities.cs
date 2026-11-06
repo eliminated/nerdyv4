@@ -37,6 +37,8 @@ public sealed class ClassMembership
     public DateTimeOffset JoinedAt { get; set; }
     /// <summary>Student opt-in: share focus statistics with this class's teacher.</summary>
     public bool SharesFocus { get; set; }
+    /// <summary>When sharing was last turned on: the teacher only sees sessions that started from then on.</summary>
+    public DateTimeOffset? SharesFocusSince { get; set; }
 }
 
 public sealed class Assignment

@@ -503,7 +503,7 @@ public sealed partial class SettingsViewModel : ObservableObject, INavigationAwa
     private async Task DeleteAccountAsync()
     {
         var confirmed = await _dialogs.ConfirmAsync("Delete your Nerdy account?",
-            "This permanently deletes your account and everything in it: topics, notes, reminders, focus history and any classes you teach. It can't be undone.",
+            "This permanently deletes your account and everything in it: topics, notes, reminders, focus history and any classes you teach. Nerdy's copy on this PC is removed too. It can't be undone.",
             "Delete account", destructive: true);
         if (!confirmed) return;
         await RunAsync(() => _auth.DeleteAccountAsync(), null);

@@ -14,7 +14,10 @@ public static class AppPaths
 
     public static string LogsDirectory => Directory.CreateDirectory(Path.Combine(Root, "logs")).FullName;
 
-    /// <summary>The local database of one account, so several people can use Nerdy on a shared PC.</summary>
+    /// <summary>Everything stored for one account on this PC, so several people can use Nerdy on a shared PC.</summary>
+    public static string UserDirectory(Guid userId) => Path.Combine(Root, "users", userId.ToString("N"));
+
+    /// <summary>The local database of one account.</summary>
     public static string UserDatabase(Guid userId) =>
-        Path.Combine(Directory.CreateDirectory(Path.Combine(Root, "users", userId.ToString("N"))).FullName, "nerdy.db");
+        Path.Combine(Directory.CreateDirectory(UserDirectory(userId)).FullName, "nerdy.db");
 }

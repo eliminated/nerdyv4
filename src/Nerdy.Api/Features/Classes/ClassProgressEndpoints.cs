@@ -75,10 +75,11 @@ internal static class ClassProgressEndpoints
             .Select(g => new { UserId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(g => g.UserId, g => g.Count, cancellationToken);
 
-        // Only sessions of students who share with this class are ever read.
+        // Only sessions of students who share with this class are ever read, and only those started since they began sharing.
         var sessions = await db.FocusSessions
             .Where(f => !f.IsDeleted && f.StartedAt >= start && f.StartedAt < end
-                && db.ClassMemberships.Any(m => m.ClassroomId == id && m.UserId == f.UserId && m.Role == ClassRole.Student && m.SharesFocus))
+                && db.ClassMemberships.Any(m => m.ClassroomId == id && m.UserId == f.UserId && m.Role == ClassRole.Student
+                    && m.SharesFocus && m.SharesFocusSince != null && f.StartedAt >= m.SharesFocusSince))
             .Select(f => new { f.UserId, f.StartedAt, f.ActualSeconds, f.Outcome })
             .ToListAsync(cancellationToken);
         var sessionsByStudent = sessions.ToLookup(s => s.UserId);

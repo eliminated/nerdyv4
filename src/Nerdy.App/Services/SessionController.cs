@@ -85,14 +85,34 @@ public sealed class SessionController(
         }
     }
 
-    private async void OnSignedOut(object? sender, bool expired)
+    private async void OnSignedOut(object? sender, SignOutReason reason)
     {
         SessionEnding?.Invoke(this, EventArgs.Empty);
+        var userId = data.UserId;
         sync.Stop();
         classes.Clear();
         await data.CloseAsync();
+        if (reason == SignOutReason.AccountDeleted && userId is { } deleted) RemoveLocalCopy(deleted);
+
+        var expired = reason == SignOutReason.Expired;
         ShowSignIn(expired);
         if (expired) toasts.Show("Your session expired. Please sign in again.", ToastKind.Warning);
+        if (reason == SignOutReason.AccountDeleted) toasts.Show("Your account was deleted, along with its copy on this PC.", ToastKind.Success);
+    }
+
+    /// <summary>After an account is deleted: its local database and the log files (which mention it) go too.</summary>
+    private void RemoveLocalCopy(Guid userId)
+    {
+        try
+        {
+            var directory = AppPaths.UserDirectory(userId);
+            if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
+            FileLoggerProvider.DeleteLogs(AppPaths.LogsDirectory);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            logger.LogWarning("Couldn't remove all of a deleted account's files from this PC: {Message}", ex.Message);
+        }
     }
 
     private void ShowSignIn(bool expired)

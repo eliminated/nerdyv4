@@ -6,6 +6,16 @@ using Nerdy.Contracts;
 
 namespace Nerdy.App.Services.Auth;
 
+public enum SignOutReason
+{
+    /// <summary>The user signed out.</summary>
+    SignedOut,
+    /// <summary>The server no longer accepts the session.</summary>
+    Expired,
+    /// <summary>The user deleted their account; this PC's copy of it should go too.</summary>
+    AccountDeleted
+}
+
 /// <summary>
 /// Owns the signed-in session: email/password and Microsoft/Google sign-in, token refresh (single-flight),
 /// offline restore of the last session, and sign-out. Use from the UI thread.
@@ -33,8 +43,8 @@ public sealed partial class AuthService : ObservableObject, ISessionTokenSource
 
     public bool IsSignedIn => User is not null;
 
-    /// <summary>Raised when the session ends: the user signed out or the server no longer accepts it.</summary>
-    public event EventHandler<bool>? SignedOut; // arg: true when it expired rather than being a deliberate sign-out
+    /// <summary>Raised when the session ends: the user signed out or deleted their account, or the server no longer accepts it.</summary>
+    public event EventHandler<SignOutReason>? SignedOut;
 
     /// <summary>Restores the last session from disk. Works offline; tokens are refreshed when the API is reachable.</summary>
     public bool TryRestore()
@@ -89,7 +99,7 @@ public sealed partial class AuthService : ObservableObject, ISessionTokenSource
     public async Task DeleteAccountAsync(CancellationToken ct = default)
     {
         await _api.DeleteMeAsync(ct);
-        EndSession(expired: false);
+        EndSession(SignOutReason.AccountDeleted);
     }
 
     public async Task SignOutAsync()
@@ -102,7 +112,7 @@ public sealed partial class AuthService : ObservableObject, ISessionTokenSource
                 _logger.LogInformation("Couldn't revoke the refresh token on sign-out: {Message}", ex.Message);
             }
         }
-        EndSession(expired: false);
+        EndSession(SignOutReason.SignedOut);
     }
 
     async Task<string?> ISessionTokenSource.GetAccessTokenAsync(bool forceRefresh, CancellationToken ct)
@@ -128,7 +138,7 @@ public sealed partial class AuthService : ObservableObject, ISessionTokenSource
             catch (ApiException ex) when (ex.Status is HttpStatusCode.Unauthorized or HttpStatusCode.BadRequest or HttpStatusCode.Forbidden)
             {
                 _logger.LogInformation("Session refresh rejected ({Status}); signing out.", ex.Status);
-                EndSession(expired: true);
+                EndSession(SignOutReason.Expired);
                 return null;
             }
         }
@@ -154,12 +164,12 @@ public sealed partial class AuthService : ObservableObject, ISessionTokenSource
         User = user;
     }
 
-    private void EndSession(bool expired)
+    private void EndSession(SignOutReason reason)
     {
         _session = null;
         _store.Clear();
         User = null;
         OnPropertyChanged(nameof(IsSignedIn));
-        SignedOut?.Invoke(this, expired);
+        SignedOut?.Invoke(this, reason);
     }
 }
