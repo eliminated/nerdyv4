@@ -21,7 +21,7 @@
 
   <main class="wrap narrow doc">
     <h1>Privacy policy</h1>
-    <p class="meta">Last updated 6 November 2026</p>
+    <p class="meta">Last updated 7 November 2026</p>
 
     <section class="summary" aria-labelledby="short">
       <h2 id="short">The short version</h2>
@@ -90,11 +90,12 @@
       <li><strong>Sign-in tokens</strong> that keep you signed in. The server stores only a fingerprint (hash) of each one. They expire after 30 days.</li>
       <li><strong>Service logs.</strong> Our hosting provider records requests to the service, errors and timings. That includes the address requested and an approximate location (city, region and country) worked out from your IP address. Your IP address itself is not stored in these logs. Some entries contain your account ID.</li>
       <li><strong>Your IP address</strong> is used for a moment to limit how often sign-in can be tried from one place. It isn't saved.</li>
+      <li><strong>Update checks.</strong> An installed Nerdy asks GitHub, where its releases are published, whether a newer version exists, shortly after it starts and then every 6 hours, and downloads updates from there. Nothing about you or your account is sent; GitHub sees your IP address, as with any download.</li>
     </ul>
     <p>We don't collect advertising IDs, contacts, location from your device, or anything about your other apps beyond what's described in the next section.</p>
 
     <h2 id="on-your-pc">3. What stays on your PC</h2>
-    <p>The app keeps its files in <code>%LOCALAPPDATA%\Nerdy</code> on your PC:</p>
+    <p>The installer puts the program itself in <code>%LOCALAPPDATA%\NerdyApp</code>, together with a random number it uses only on your PC to roll updates out gradually, and keeps its own log of installs and updates in <code>%LOCALAPPDATA%\velopack</code>. Neither is sent anywhere. The app keeps your files in <code>%LOCALAPPDATA%\Nerdy</code> on your PC:</p>
     <ul>
       <li><strong>A copy of your planner</strong>, so it works offline. This file is protected by your Windows account but isn't encrypted on its own, so anyone who can sign in to your Windows account can read it.</li>
       <li><strong>Your sign-in tokens</strong>, encrypted with Windows so only your Windows account can use them.</li>
@@ -139,7 +140,7 @@
         <tbody>
           <tr><td>Microsoft Azure</td><td>Hosting the service, the database, sending account emails, logs</td><td>Everything stored on the server, account emails, service logs</td></tr>
           <tr><td>Anthropic</td><td>AI exit review</td><td>Only what's listed in <a href="#ai">AI exit review</a></td></tr>
-          <tr><td>GitHub (Microsoft)</td><td>Hosting this website and the source code</td><td>Website visits: GitHub logs visitors' IP addresses for security (<a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub's privacy statement</a>)</td></tr>
+          <tr><td>GitHub (Microsoft)</td><td>Hosting this website, the source code, and Nerdy's downloads and updates</td><td>Website visits, downloads and update checks: GitHub logs IP addresses for security (<a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub's privacy statement</a>)</td></tr>
         </tbody>
       </table>
     </div>
@@ -165,7 +166,7 @@
           <tr><td>AI exit reviews at Anthropic</td><td>Up to 30 days, with the exceptions in <a href="#ai">AI exit review</a>.</td></tr>
           <tr><td>Account emails</td><td>We don't keep copies after sending.</td></tr>
           <tr><td>Log files on your PC</td><td>14 days.</td></tr>
-          <tr><td>Your planner copy on your PC</td><td>Until you delete your account or remove it yourself. Deleting your account removes the copy and the log files from the PC you delete it on. Other PCs where you were signed in keep their copy until you delete the <code>%LOCALAPPDATA%\Nerdy</code> folder there.</td></tr>
+          <tr><td>Your planner copy on your PC</td><td>Until you delete your account or remove it yourself. Deleting your account removes the copy and the log files from the PC you delete it on. Other PCs where you were signed in keep their copy until you delete the <code>%LOCALAPPDATA%\Nerdy</code> folder there. Uninstalling Nerdy removes the program but not this folder.</td></tr>
         </tbody>
       </table>
     </div>

@@ -1,0 +1,57 @@
+# Builds the Windows installer with Velopack and publishes it as a GitHub release when a version tag is pushed:
+#   git tag v0.1.0 && git push origin v0.1.0
+# Installed copies of Nerdy find the new release on GitHub and update themselves (src/Nerdy.App/Services/Updates).
+# The installer is not code-signed yet, so Windows SmartScreen warns on first install.
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  release:
+    name: Build and publish the installer
+    # The desktop app is WinUI 3, which only builds on Windows.
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Read the version from the tag
+        shell: pwsh
+        run: |
+          $version = '${{ github.ref_name }}'.Substring(1)
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Restore tools (vpk)
+        run: dotnet tool restore
+
+      - name: Publish the app
+        run: dotnet publish src/Nerdy.App -c Release -r win-x64 --self-contained -p:Platform=x64 -p:Version=${{ env.VERSION }} -o publish
+
+      # Delta updates are built against the previous release; the very first release has none.
+      - name: Download the previous release
+        continue-on-error: true
+        run: dotnet vpk download github --repoUrl ${{ github.server_url }}/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }} -o releases
+
+      # The id must not be "Nerdy": Velopack installs to %LOCALAPPDATA%\<id>, and Nerdy keeps your data in %LOCALAPPDATA%\Nerdy.
+      - name: Build the installer
+        run: dotnet vpk pack --packId NerdyApp --packVersion ${{ env.VERSION }} --packDir publish --mainExe Nerdy.exe --packTitle Nerdy --packAuthors "Nerdy contributors" --icon src/Nerdy.App/Assets/Nerdy.ico -o releases
+
+      - name: Publish the GitHub release
+        run: dotnet vpk upload github --repoUrl ${{ github.server_url }}/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }} --publish --releaseName "Nerdy ${{ env.VERSION }}" --tag ${{ github.ref_name }} -o releases
