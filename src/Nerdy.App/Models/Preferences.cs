@@ -63,9 +63,15 @@ public sealed class Preferences
 
     public Preferences Clone() => Deserialize(Serialize());
 
+    private const string LegacyTopics = "topics";
+
     /// <summary>Repairs values from older versions or other devices (new nav sections, removed widgets…).</summary>
     private void Normalize()
     {
+        // Nerdy 0.1.0 called the Subjects page and its Home card "topics".
+        NavOrder = NavOrder.Select(id => id == LegacyTopics ? NavSections.Subjects : id).ToList();
+        if (Widgets.Remove(LegacyTopics, out var showSubjects)) Widgets.TryAdd(HomeWidgets.Subjects, showSubjects);
+
         NavOrder = NavOrder.Where(NavSections.DefaultOrder.Contains).Distinct().ToList();
         foreach (var id in NavSections.DefaultOrder.Where(id => !NavOrder.Contains(id))) NavOrder.Add(id);
         foreach (var w in HomeWidgets.All.Where(w => !Widgets.ContainsKey(w.Id))) Widgets[w.Id] = true;
@@ -148,9 +154,9 @@ public sealed record NavSection(string Id, string Label, FluentIcons.Common.Symb
 public static class NavSections
 {
     public const string Home = "home", Calendar = "calendar", Schedule = "schedule", Reminders = "reminders",
-        Topics = "topics", Notes = "notes", Focus = "focus", Stats = "stats", Classes = "classes", Settings = "settings";
+        Subjects = "subjects", Notes = "notes", Focus = "focus", Stats = "stats", Classes = "classes", Settings = "settings";
 
-    public static readonly IReadOnlyList<string> DefaultOrder = [Home, Calendar, Schedule, Reminders, Topics, Notes, Focus, Stats, Classes];
+    public static readonly IReadOnlyList<string> DefaultOrder = [Home, Calendar, Schedule, Reminders, Subjects, Notes, Focus, Stats, Classes];
 
     public static readonly IReadOnlyDictionary<string, NavSection> All = new Dictionary<string, NavSection>
     {
@@ -158,7 +164,7 @@ public static class NavSections
         [Calendar] = new(Calendar, "Calendar", FluentIcons.Common.Symbol.Calendar),
         [Schedule] = new(Schedule, "Schedule", FluentIcons.Common.Symbol.CalendarEdit),
         [Reminders] = new(Reminders, "Reminders", FluentIcons.Common.Symbol.Alert),
-        [Topics] = new(Topics, "Topics", FluentIcons.Common.Symbol.Library),
+        [Subjects] = new(Subjects, "Subjects", FluentIcons.Common.Symbol.Library),
         [Notes] = new(Notes, "Notes", FluentIcons.Common.Symbol.Notepad),
         [Focus] = new(Focus, "Focus", FluentIcons.Common.Symbol.TargetArrow),
         [Stats] = new(Stats, "Statistics & History", FluentIcons.Common.Symbol.DataTrending),
@@ -170,10 +176,12 @@ public sealed record HomeWidget(string Id, string Label);
 
 public static class HomeWidgets
 {
+    public const string Subjects = "subjects";
+
     public static readonly IReadOnlyList<HomeWidget> All =
     [
         new("next", "Next up"), new("stats", "Focus time"), new("streak", "Focus streak"),
-        new("schedule", "Today's schedule"), new("reminders", "Reminders"), new("topics", "Topic progress"),
+        new("schedule", "Today's schedule"), new("reminders", "Reminders"), new(Subjects, "Subject progress"),
         new("assignments", "Class assignments")
     ];
 }

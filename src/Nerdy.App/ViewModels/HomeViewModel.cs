@@ -25,13 +25,14 @@ public sealed record WeekBar(string Label, double Height, Brush Fill, string Too
 public sealed record StreakCell(Brush Fill, string ToolTip);
 public sealed record HourLine(string Label, double Top);
 
-public sealed partial class TopicCardViewModel(Guid id, string name, Brush color, int percent, string next, Action<Guid> open)
+/// <summary>A subject's progress card on Home. <paramref name="percent"/> is null when it has no subtopics yet.</summary>
+public sealed partial class SubjectCardViewModel(Guid id, string name, Brush color, int? percent, string next, Action<Guid> open)
 {
     public Guid Id { get; } = id;
     public string Name { get; } = name;
     public Brush Color { get; } = color;
-    public double Percent { get; } = percent;
-    public string PercentText { get; } = $"{percent}%";
+    public double Percent { get; } = percent ?? 0;
+    public string PercentText { get; } = percent is { } p ? $"{p}%" : "";
     public string NextText { get; } = $"Next · {next}";
 
     [RelayCommand]
@@ -92,7 +93,7 @@ public sealed partial class HomeViewModel : ObservableObject, INavigationAware
     public ObservableCollection<StreakCell> StreakCells { get; } = [];
     public ObservableCollection<ReminderItemViewModel> Reminders { get; } = [];
     public ObservableCollection<ReminderItemViewModel> Assignments { get; } = [];
-    public ObservableCollection<TopicCardViewModel> Topics { get; } = [];
+    public ObservableCollection<SubjectCardViewModel> Subjects { get; } = [];
     public ObservableCollection<HourLine> Hours { get; } = [];
     public ObservableCollection<AgendaBlock> AgendaBlocks { get; } = [];
     public ObservableCollection<ChoiceItem> ModeSegments { get; } = [];
@@ -110,7 +111,7 @@ public sealed partial class HomeViewModel : ObservableObject, INavigationAware
     [ObservableProperty] public partial bool ShowStreak { get; private set; } = true;
     [ObservableProperty] public partial bool ShowSchedule { get; private set; } = true;
     [ObservableProperty] public partial bool ShowReminders { get; private set; } = true;
-    [ObservableProperty] public partial bool ShowTopics { get; private set; } = true;
+    [ObservableProperty] public partial bool ShowSubjects { get; private set; } = true;
     [ObservableProperty] public partial bool ShowAssignments { get; private set; }
     public bool IsAgenda => !IsDashboard;
 
@@ -128,7 +129,7 @@ public sealed partial class HomeViewModel : ObservableObject, INavigationAware
     // ----- Empty states -----
     [ObservableProperty] public partial bool HasTodayRows { get; private set; }
     [ObservableProperty] public partial bool HasReminders { get; private set; }
-    [ObservableProperty] public partial bool HasTopics { get; private set; }
+    [ObservableProperty] public partial bool HasSubjects { get; private set; }
 
     // ----- Agenda layout -----
     public double AgendaHeight => (AgendaEndHour - AgendaStartHour) * AgendaHourHeight + 20;
@@ -178,7 +179,7 @@ public sealed partial class HomeViewModel : ObservableObject, INavigationAware
     }
 
     [RelayCommand]
-    private void OpenNextNotes() => _navigation.Navigate(NavSections.Notes, new NotesTarget(_next?.TopicId, null, CreateNew: false));
+    private void OpenNextNotes() => _navigation.Navigate(NavSections.Notes, new NotesTarget(_next?.SubjectId, _next?.TopicId, null, CreateNew: false));
 
     [RelayCommand]
     private async Task StartFocusAsync() => await _focus.StartAsync();
@@ -186,6 +187,7 @@ public sealed partial class HomeViewModel : ObservableObject, INavigationAware
     private void FocusOn(AgendaItem item)
     {
         _focus.DraftTask = item.Title;
+        _focus.DraftSubjectId = item.SubjectId;
         _focus.DraftTopicId = item.TopicId;
         _navigation.Navigate(NavSections.Focus);
     }
@@ -221,7 +223,7 @@ public sealed partial class HomeViewModel : ObservableObject, INavigationAware
         ShowStreak = W("streak");
         ShowSchedule = W("schedule");
         ShowReminders = W("reminders");
-        ShowTopics = W("topics");
+        ShowSubjects = W(HomeWidgets.Subjects);
         ShowAssignments = W("assignments") && _classes.MyAssignments.Any(a => !a.IsDone);
 
         var first = (_auth.User?.DisplayName ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "there";
@@ -234,7 +236,7 @@ public sealed partial class HomeViewModel : ObservableObject, INavigationAware
         BuildToday(todayItems, now);
         BuildFocusWidgets(today);
         BuildReminders(today);
-        BuildTopics();
+        BuildSubjects();
         BuildAgenda(todayItems, now);
         RefreshQuickFocus();
     }
@@ -253,8 +255,8 @@ public sealed partial class HomeViewModel : ObservableObject, INavigationAware
         var minutes = (int)Math.Ceiling((_next.Start - now).TotalMinutes);
         NextBadge = _next.Start <= now ? "Happening now" : minutes < 60 ? $"Next up · in {minutes} min" : $"Next up · {Fmt.Clock(_next.Start)}";
         NextTitle = _next.Title;
-        var topic = _next.ColorHex is null ? _agenda.TopicName(_next.TopicId) : null;
-        NextDetail = string.Join(" · ", new[] { Fmt.ClockRange(_next.Start, _next.End), topic, _next.Subtitle }.Where(s => !string.IsNullOrEmpty(s)));
+        var subject = _next.ColorHex is null ? _agenda.LinkLabel(_next.SubjectId, _next.TopicId) : null;
+        NextDetail = string.Join(" · ", new[] { Fmt.ClockRange(_next.Start, _next.End), subject, _next.Subtitle }.Where(s => !string.IsNullOrEmpty(s)));
     }
 
     private void BuildToday(List<AgendaItem> today, DateTime now)
@@ -267,8 +269,8 @@ public sealed partial class HomeViewModel : ObservableObject, INavigationAware
             var past = item.End <= now;
             TodayRows.Add(new ScheduleRow(
                 Fmt.Clock(item.Start), item.Title,
-                $"{Fmt.ClockRange(item.Start, item.End)} · {item.Subtitle ?? _agenda.TopicName(item.TopicId)}",
-                ColorMix.Brush(item.ColorHex ?? _agenda.TopicColor(item.TopicId)),
+                $"{Fmt.ClockRange(item.Start, item.End)} · {item.Subtitle ?? _agenda.LinkLabel(item.SubjectId, item.TopicId)}",
+                ColorMix.Brush(item.ColorHex ?? _agenda.SubjectColor(item.SubjectId)),
                 past ? 0.6 : 1, past, i == nextIndex, $"Now · {Fmt.Clock(now)}"));
         }
         HasTodayRows = TodayRows.Count > 0;
@@ -315,13 +317,13 @@ public sealed partial class HomeViewModel : ObservableObject, INavigationAware
             Assignments.Add(ReminderItemViewModel.For(a, _data, _classes, _theme, _toasts, today));
     }
 
-    private void BuildTopics()
+    private void BuildSubjects()
     {
-        Topics.Clear();
-        foreach (var t in _data.Topics.Take(4))
-            Topics.Add(new TopicCardViewModel(t.Id, t.Name, ColorMix.Brush(t.ColorHex), _agenda.TopicProgress(t.Id), _agenda.NextLabel(t.Id),
-                id => _navigation.Navigate(NavSections.Topics, id)));
-        HasTopics = Topics.Count > 0;
+        Subjects.Clear();
+        foreach (var s in _data.Subjects.Take(4))
+            Subjects.Add(new SubjectCardViewModel(s.Id, s.Name, ColorMix.Brush(s.ColorHex), _agenda.SubjectProgress(s.Id), _agenda.NextLabel(s.Id),
+                id => _navigation.Navigate(NavSections.Subjects, id)));
+        HasSubjects = Subjects.Count > 0;
     }
 
     private void BuildAgenda(List<AgendaItem> today, DateTime now)
@@ -333,7 +335,7 @@ public sealed partial class HomeViewModel : ObservableObject, INavigationAware
         AgendaBlocks.Clear();
         foreach (var item in today)
         {
-            var color = ColorMix.Parse(item.ColorHex ?? _agenda.TopicColor(item.TopicId));
+            var color = ColorMix.Parse(item.ColorHex ?? _agenda.SubjectColor(item.SubjectId));
             var startHour = Math.Max(AgendaStartHour, item.StartHour);
             var endHour = Math.Min(AgendaEndHour + 0.5, item.EndHour);
             if (endHour <= AgendaStartHour || startHour >= AgendaEndHour + 0.5) continue;

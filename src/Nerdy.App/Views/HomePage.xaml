@@ -251,15 +251,15 @@
                     </StackPanel>
                 </Grid>
 
-                <!-- Row 3: topic progress -->
-                <ItemsControl ItemsSource="{x:Bind ViewModel.Topics}" Visibility="{x:Bind ViewModel.ShowTopics, Mode=OneWay}" IsTabStop="False">
+                <!-- Row 3: subject progress -->
+                <ItemsControl ItemsSource="{x:Bind ViewModel.Subjects}" Visibility="{x:Bind ViewModel.ShowSubjects, Mode=OneWay}" IsTabStop="False">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <tk:UniformGrid Columns="4" ColumnSpacing="16" />
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:TopicCardViewModel">
+                        <DataTemplate x:DataType="vm:SubjectCardViewModel">
                             <Button Style="{StaticResource PlainButtonStyle}" CornerRadius="14" Padding="18,16" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
                                     Background="{ThemeResource NerdyCardBackgroundBrush}" BorderBrush="{ThemeResource NerdyCardBorderBrush}" BorderThickness="1"
                                     Command="{x:Bind OpenCommand}" AutomationProperties.Name="{x:Bind Name}">
@@ -428,16 +428,16 @@
                             <TextBlock Text="Nothing due today." Visibility="{x:Bind h:B.Collapsed(ViewModel.HasReminders), Mode=OneWay}" Style="{StaticResource NerdySecondaryStyle}" />
                         </StackPanel>
 
-                        <StackPanel Visibility="{x:Bind ViewModel.ShowTopics, Mode=OneWay}">
-                            <TextBlock Text="Topics" Style="{StaticResource NerdyStrongStyle}" Margin="0,0,0,8" />
-                            <ItemsControl ItemsSource="{x:Bind ViewModel.Topics}" IsTabStop="False">
+                        <StackPanel Visibility="{x:Bind ViewModel.ShowSubjects, Mode=OneWay}">
+                            <TextBlock Text="Subjects" Style="{StaticResource NerdyStrongStyle}" Margin="0,0,0,8" />
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.Subjects}" IsTabStop="False">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
                                         <StackPanel Spacing="10" />
                                     </ItemsPanelTemplate>
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:TopicCardViewModel">
+                                    <DataTemplate x:DataType="vm:SubjectCardViewModel">
                                         <Button Style="{StaticResource PlainButtonStyle}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0,2" Command="{x:Bind OpenCommand}">
                                             <StackPanel Spacing="4">
                                                 <Grid>

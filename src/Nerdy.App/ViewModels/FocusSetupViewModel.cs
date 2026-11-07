@@ -88,7 +88,10 @@ public sealed partial class FocusSetupViewModel : ObservableObject, INavigationA
 
     public ObservableCollection<ChoiceItem> ModeCards { get; } = [];
     public ObservableCollection<ChoiceItem> DurationChips { get; } = [];
+    public ObservableCollection<ChoiceItem> SubjectChips { get; } = [];
+    /// <summary>The topics of the picked subject, to narrow the session down further (optional).</summary>
     public ObservableCollection<ChoiceItem> TopicChips { get; } = [];
+    [ObservableProperty] public partial bool HasTopicChips { get; private set; }
     public ObservableCollection<AllowedAppRowViewModel> Apps { get; } = [];
     public ObservableCollection<WebsiteChip> Websites { get; } = [];
     public ObservableCollection<AddableApp> AddableApps { get; } = [];
@@ -198,9 +201,11 @@ public sealed partial class FocusSetupViewModel : ObservableObject, INavigationA
             DurationChips.Add(new ChoiceItem(_theme, ChoiceLook.Chip, $"{m}m", m, PickDuration, selected: !_custom && seconds == m * 60));
         DurationChips.Add(new ChoiceItem(_theme, ChoiceLook.Chip, "Custom", null, PickDuration, Symbol.Timer, selected: _custom));
 
-        TopicChips.Clear();
-        foreach (var t in _data.Topics)
-            TopicChips.Add(new ChoiceItem(_theme, ChoiceLook.ColorChip, t.Name, t.Id, PickTopic, colorHex: t.ColorHex, selected: t.Id == _focus.DraftTopicId));
+        SubjectChips.Clear();
+        foreach (var subject in _data.Subjects)
+            SubjectChips.Add(new ChoiceItem(_theme, ChoiceLook.ColorChip, subject.Name, subject.Id, PickSubject, colorHex: subject.ColorHex,
+                selected: subject.Id == _focus.DraftSubjectId));
+        RebuildTopicChips();
 
         RebuildAllowed();
         SetSeconds(seconds, fromSlider: false);
@@ -286,11 +291,29 @@ public sealed partial class FocusSetupViewModel : ObservableObject, INavigationA
         SetSeconds((int)(V(CustomHours) * 3600 + V(CustomMinutes) * 60 + V(CustomSeconds)), fromSlider: false);
     }
 
+    private void PickSubject(ChoiceItem item)
+    {
+        var id = (Guid)item.Value!;
+        _focus.DraftSubjectId = _focus.DraftSubjectId == id ? null : id;
+        _focus.DraftTopicId = null;
+        foreach (var c in SubjectChips) c.IsSelected = (Guid)c.Value! == _focus.DraftSubjectId;
+        RebuildTopicChips();
+    }
+
     private void PickTopic(ChoiceItem item)
     {
         var id = (Guid)item.Value!;
         _focus.DraftTopicId = _focus.DraftTopicId == id ? null : id;
         foreach (var c in TopicChips) c.IsSelected = (Guid)c.Value! == _focus.DraftTopicId;
+    }
+
+    private void RebuildTopicChips()
+    {
+        TopicChips.Clear();
+        if (_data.Subject(_focus.DraftSubjectId) is { } subject)
+            foreach (var t in _data.TopicsOf(subject.Id))
+                TopicChips.Add(new ChoiceItem(_theme, ChoiceLook.Chip, t.Name, t.Id, PickTopic, selected: t.Id == _focus.DraftTopicId));
+        HasTopicChips = TopicChips.Count > 0;
     }
 
     private void UpdateSummary()

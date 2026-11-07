@@ -79,7 +79,7 @@ public partial class App : Application
         s.AddTransient<CalendarViewModel>();
         s.AddTransient<ScheduleViewModel>();
         s.AddTransient<RemindersViewModel>();
-        s.AddTransient<TopicsViewModel>();
+        s.AddTransient<SubjectsViewModel>();
         s.AddTransient<NotesViewModel>();
         s.AddTransient<FocusSetupViewModel>();
         s.AddTransient<FocusSessionViewModel>();
@@ -98,7 +98,7 @@ public partial class App : Application
         navigation.RegisterSection<Views.CalendarPage>(Models.NavSections.Calendar);
         navigation.RegisterSection<Views.SchedulePage>(Models.NavSections.Schedule);
         navigation.RegisterSection<Views.RemindersPage>(Models.NavSections.Reminders);
-        navigation.RegisterSection<Views.TopicsPage>(Models.NavSections.Topics);
+        navigation.RegisterSection<Views.SubjectsPage>(Models.NavSections.Subjects);
         navigation.RegisterSection<Views.NotesPage>(Models.NavSections.Notes);
         navigation.RegisterSection<Views.FocusSetupPage>(Models.NavSections.Focus);
         navigation.RegisterSection<Views.StatsPage>(Models.NavSections.Stats);

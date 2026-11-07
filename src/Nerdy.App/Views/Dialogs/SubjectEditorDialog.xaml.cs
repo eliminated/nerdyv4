@@ -3,14 +3,14 @@ using Nerdy.App.ViewModels;
 
 namespace Nerdy.App.Views.Dialogs;
 
-public sealed partial class TopicEditorDialog : ContentDialog
+public sealed partial class SubjectEditorDialog : ContentDialog
 {
-    public TopicEditorDialog(TopicEditorViewModel viewModel)
+    public SubjectEditorDialog(SubjectEditorViewModel viewModel)
     {
         ViewModel = viewModel;
         InitializeComponent();
         PrimaryButtonClick += (_, _) => viewModel.Save();
     }
 
-    public TopicEditorViewModel ViewModel { get; }
+    public SubjectEditorViewModel ViewModel { get; }
 }

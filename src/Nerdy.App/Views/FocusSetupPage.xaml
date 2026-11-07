@@ -115,13 +115,25 @@
                                 <TextBlock Text="What are you working on?" Style="{StaticResource NerdyStrongStyle}" />
                                 <TextBox PlaceholderText="e.g. Methods draft" Style="{StaticResource NerdyTextBoxStyle}" Text="{x:Bind ViewModel.TaskText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                          AutomationProperties.Name="What are you working on" />
-                                <ItemsControl ItemsSource="{x:Bind ViewModel.TopicChips}" ItemTemplate="{StaticResource NerdyColorChipTemplate}" IsTabStop="False">
+                                <ItemsControl ItemsSource="{x:Bind ViewModel.SubjectChips}" ItemTemplate="{StaticResource NerdyColorChipTemplate}" IsTabStop="False"
+                                              AutomationProperties.Name="Subject">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
                                             <tk:WrapPanel />
                                         </ItemsPanelTemplate>
                                     </ItemsControl.ItemsPanel>
                                 </ItemsControl>
+                                <StackPanel Spacing="8" Visibility="{x:Bind ViewModel.HasTopicChips, Mode=OneWay}">
+                                    <TextBlock Text="Topic (optional)" Style="{StaticResource NerdyCaptionStyle}" />
+                                    <ItemsControl ItemsSource="{x:Bind ViewModel.TopicChips}" ItemTemplate="{StaticResource NerdyPillChipTemplate}" IsTabStop="False"
+                                                  AutomationProperties.Name="Topic">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <tk:WrapPanel />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                    </ItemsControl>
+                                </StackPanel>
                             </StackPanel>
                         </Border>
                     </StackPanel>

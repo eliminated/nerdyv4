@@ -15,7 +15,7 @@ internal static class SyncMappings
         entity.IsDeleted = dto.IsDeleted;
     }
 
-    public static void Apply(Topic e, TopicDto d)
+    public static void Apply(Subject e, SubjectDto d)
     {
         ApplyCommon(e, d);
         e.Name = d.Name;
@@ -25,10 +25,24 @@ internal static class SyncMappings
         e.SortOrder = d.SortOrder;
     }
 
-    public static TopicDto ToDto(Topic e) => new()
+    public static SubjectDto ToDto(Subject e) => new()
     {
         Id = e.Id, UpdatedAt = e.UpdatedAt, IsDeleted = e.IsDeleted,
         Name = e.Name, ColorHex = e.ColorHex, DueTitle = e.DueTitle, DueAt = e.DueAt, SortOrder = e.SortOrder,
+    };
+
+    public static void Apply(Topic e, TopicDto d)
+    {
+        ApplyCommon(e, d);
+        e.SubjectId = d.SubjectId;
+        e.Name = d.Name;
+        e.SortOrder = d.SortOrder;
+    }
+
+    public static TopicDto ToDto(Topic e) => new()
+    {
+        Id = e.Id, UpdatedAt = e.UpdatedAt, IsDeleted = e.IsDeleted,
+        SubjectId = e.SubjectId, Name = e.Name, SortOrder = e.SortOrder,
     };
 
     public static void Apply(Subtopic e, SubtopicDto d)
@@ -51,6 +65,7 @@ internal static class SyncMappings
         ApplyCommon(e, d);
         e.Title = d.Title;
         e.Subtitle = d.Subtitle;
+        e.SubjectId = d.SubjectId;
         e.TopicId = d.TopicId;
         e.StartsAt = d.StartsAt;
         e.EndsAt = d.EndsAt;
@@ -67,7 +82,7 @@ internal static class SyncMappings
     public static CalendarEventDto ToDto(CalendarEvent e) => new()
     {
         Id = e.Id, UpdatedAt = e.UpdatedAt, IsDeleted = e.IsDeleted,
-        Title = e.Title, Subtitle = e.Subtitle, TopicId = e.TopicId, StartsAt = e.StartsAt, EndsAt = e.EndsAt,
+        Title = e.Title, Subtitle = e.Subtitle, SubjectId = e.SubjectId, TopicId = e.TopicId, StartsAt = e.StartsAt, EndsAt = e.EndsAt,
         IsAllDay = e.IsAllDay, IsMilestone = e.IsMilestone, RepeatDays = e.RepeatDays, RepeatUntil = e.RepeatUntil,
         ReminderMinutes = e.ReminderMinutes, AutoFocus = e.AutoFocus, AutoFocusMode = e.AutoFocusMode, SeriesId = e.SeriesId,
     };
@@ -78,6 +93,7 @@ internal static class SyncMappings
         e.Title = d.Title;
         e.DueAt = d.DueAt;
         e.HasDueTime = d.HasDueTime;
+        e.SubjectId = d.SubjectId;
         e.TopicId = d.TopicId;
         e.IsStarred = d.IsStarred;
         e.IsDone = d.IsDone;
@@ -88,7 +104,7 @@ internal static class SyncMappings
     public static ReminderDto ToDto(Reminder e) => new()
     {
         Id = e.Id, UpdatedAt = e.UpdatedAt, IsDeleted = e.IsDeleted,
-        Title = e.Title, DueAt = e.DueAt, HasDueTime = e.HasDueTime, TopicId = e.TopicId, IsStarred = e.IsStarred,
+        Title = e.Title, DueAt = e.DueAt, HasDueTime = e.HasDueTime, SubjectId = e.SubjectId, TopicId = e.TopicId, IsStarred = e.IsStarred,
         IsDone = e.IsDone, CompletedAt = e.CompletedAt, Notes = e.Notes,
     };
 
@@ -96,6 +112,7 @@ internal static class SyncMappings
     {
         ApplyCommon(e, d);
         e.Title = d.Title;
+        e.SubjectId = d.SubjectId;
         e.TopicId = d.TopicId;
         e.SubtopicId = d.SubtopicId;
         e.BodyRtf = d.BodyRtf;
@@ -106,13 +123,14 @@ internal static class SyncMappings
     public static NoteDto ToDto(Note e) => new()
     {
         Id = e.Id, UpdatedAt = e.UpdatedAt, IsDeleted = e.IsDeleted,
-        Title = e.Title, TopicId = e.TopicId, SubtopicId = e.SubtopicId, BodyRtf = e.BodyRtf, BodyText = e.BodyText,
+        Title = e.Title, SubjectId = e.SubjectId, TopicId = e.TopicId, SubtopicId = e.SubtopicId, BodyRtf = e.BodyRtf, BodyText = e.BodyText,
         Checklist = JsonSerializer.Deserialize<List<ChecklistItemDto>>(e.ChecklistJson, ChecklistJson) ?? [],
     };
 
     public static void Apply(FocusSession e, FocusSessionDto d)
     {
         ApplyCommon(e, d);
+        e.SubjectId = d.SubjectId;
         e.TopicId = d.TopicId;
         e.Task = d.Task;
         e.Mode = d.Mode;
@@ -128,7 +146,7 @@ internal static class SyncMappings
     public static FocusSessionDto ToDto(FocusSession e) => new()
     {
         Id = e.Id, UpdatedAt = e.UpdatedAt, IsDeleted = e.IsDeleted,
-        TopicId = e.TopicId, Task = e.Task, Mode = e.Mode, PlannedSeconds = e.PlannedSeconds, ActualSeconds = e.ActualSeconds,
+        SubjectId = e.SubjectId, TopicId = e.TopicId, Task = e.Task, Mode = e.Mode, PlannedSeconds = e.PlannedSeconds, ActualSeconds = e.ActualSeconds,
         StartedAt = e.StartedAt, EndedAt = e.EndedAt, Outcome = e.Outcome, ExitReason = e.ExitReason, ExitNote = e.ExitNote,
     };
 

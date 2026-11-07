@@ -9,11 +9,12 @@ public class FocusStatsTests
     private static readonly Guid Calc = Guid.NewGuid();
     private static readonly Guid Bio = Guid.NewGuid();
 
-    private static SessionRecord S(int daysAgo, double hour, int minutes, Guid? topic = null,
-        FocusMode mode = FocusMode.Focus, FocusOutcome outcome = FocusOutcome.Completed, int? planned = null) => new()
+    private static SessionRecord S(int daysAgo, double hour, int minutes, Guid? subject = null,
+        FocusMode mode = FocusMode.Focus, FocusOutcome outcome = FocusOutcome.Completed, int? planned = null, Guid? topic = null) => new()
     {
         Id = Guid.NewGuid(),
-        TopicId = topic ?? Calc,
+        SubjectId = subject ?? Calc,
+        TopicId = topic,
         Start = Today.AddDays(-daysAgo).ToDateTime(TimeOnly.MinValue).AddHours(hour),
         ActualMinutes = minutes,
         PlannedMinutes = planned ?? minutes,
@@ -71,10 +72,10 @@ public class FocusStatsTests
 
         var today = r.Bars[^1];
         Assert.Equal(170, today.TotalMinutes);
-        Assert.Equal([Calc, Bio], today.Segments.Select(s => s.TopicId!.Value));
+        Assert.Equal([Calc, Bio], today.Segments.Select(s => s.SubjectId!.Value));
         Assert.Equal(180, r.AxisMaxMinutes);
         Assert.Equal(60, r.AxisStepMinutes);
-        Assert.Equal(59, r.ByTopic[0].Percent);
+        Assert.Equal(59, r.BySubject[0].Percent);
     }
 
     [Fact]
@@ -91,7 +92,7 @@ public class FocusStatsTests
         Assert.Equal(60, r.Heatmap[3, 1]); // Thursday, 9 AM column
         Assert.Equal(9, r.Peak!.StartHour);
         Assert.Equal(DayOfWeek.Thursday, r.Strongest!.Day);
-        Assert.Equal(Bio, r.EarlyEnder!.TopicId);
+        Assert.Equal(Bio, r.EarlyEnder!.SubjectId);
         Assert.Equal(2, r.EarlyEnder.EndedEarly);
     }
 
@@ -140,5 +141,25 @@ public class FocusStatsTests
         var days = FocusStats.DailyMinutes([S(0, 9, 30), S(0, 13, 15), S(3, 9, 40)], Today.AddDays(-3), 4);
 
         Assert.Equal([40, 0, 0, 45], days);
+    }
+
+    [Fact]
+    public void Subject_time_splits_by_topic_with_shares_of_the_subject()
+    {
+        var limits = Guid.NewGuid();
+        var series = Guid.NewGuid();
+        SessionRecord[] sessions =
+        [
+            S(0, 9, 60, topic: limits), S(1, 9, 30, topic: limits), S(1, 14, 30, topic: series), S(2, 9, 30),
+            S(0, 16, 50, Bio)
+        ];
+
+        var calc = FocusStats.Build(sessions, StatsRange.Week, Today).BySubject.Single(s => s.SubjectId == Calc);
+
+        Assert.Equal(150, calc.Minutes);
+        Assert.Equal(4, calc.Sessions);
+        Assert.Equal([limits, series, null], calc.Topics.Select(t => t.TopicId));
+        Assert.Equal([90, 30, 30], calc.Topics.Select(t => t.Minutes));
+        Assert.Equal([60, 20, 20], calc.Topics.Select(t => t.Percent));
     }
 }

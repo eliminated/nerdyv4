@@ -225,7 +225,7 @@ public sealed partial class CalendarViewModel : ObservableObject, INavigationAwa
 
     private void OnChanged(object? sender, DataChangedEventArgs e)
     {
-        if (e.Affects(DataKinds.Events | DataKinds.Topics | DataKinds.Preferences)) Refresh();
+        if (e.Affects(DataKinds.Events | DataKinds.Subjects | DataKinds.Preferences)) Refresh();
     }
 
     private void OnThemeChanged(object? sender, EventArgs e) => Refresh();
@@ -288,7 +288,7 @@ public sealed partial class CalendarViewModel : ObservableObject, INavigationAwa
 
     private EventSlot Slot(AgendaItem item)
     {
-        var color = ColorMix.Parse(item.ColorHex ?? _agenda.TopicColor(item.TopicId));
+        var color = ColorMix.Parse(item.ColorHex ?? _agenda.SubjectColor(item.SubjectId));
         return item.IsMilestone
             ? new EventSlot(item, ColorMix.Brush(color), _theme.Brush("NerdyOnAccentBrush"), FontWeights.SemiBold, OpenItem)
             : new EventSlot(item, ColorMix.Brush(_theme.Tint(color, 16)), ColorMix.Brush(_theme.Ink(color)), FontWeights.SemiBold, OpenItem);
@@ -296,7 +296,7 @@ public sealed partial class CalendarViewModel : ObservableObject, INavigationAwa
 
     private ChipItem Chip(AgendaItem item)
     {
-        var color = ColorMix.Parse(item.ColorHex ?? _agenda.TopicColor(item.TopicId));
+        var color = ColorMix.Parse(item.ColorHex ?? _agenda.SubjectColor(item.SubjectId));
         return item.IsMilestone || item.Source == OccurrenceSource.Assignment
             ? new ChipItem(item.Title, ColorMix.Brush(color), _theme.Brush("NerdyOnAccentBrush"), FontWeights.SemiBold, () => OpenItem(item))
             : new ChipItem(item.Title, ColorMix.Brush(_theme.Tint(color, 14)), ColorMix.Brush(_theme.Ink(color)), FontWeights.Medium, () => OpenItem(item));
@@ -330,7 +330,7 @@ public sealed partial class CalendarViewModel : ObservableObject, INavigationAwa
         DaySummaryText = items.Count == 0 ? "Nothing planned" : $"{items.Count} {(items.Count == 1 ? "item" : "items")} · {Fmt.HoursMinutes(hours)} planned";
         DaySummary.Clear();
         foreach (var i in items)
-            DaySummary.Add(new SummaryRow(i.Title, Fmt.Clock(i.Start), ColorMix.Brush(i.ColorHex ?? _agenda.TopicColor(i.TopicId))));
+            DaySummary.Add(new SummaryRow(i.Title, Fmt.Clock(i.Start), ColorMix.Brush(i.ColorHex ?? _agenda.SubjectColor(i.SubjectId))));
     }
 
     private void OpenDay(DateOnly day)

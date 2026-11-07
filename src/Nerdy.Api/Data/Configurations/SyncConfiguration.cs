@@ -19,14 +19,20 @@ internal abstract class SyncEntityConfiguration<T> : IEntityTypeConfiguration<T>
     protected abstract void ConfigureFields(EntityTypeBuilder<T> entity);
 }
 
+internal sealed class SubjectConfiguration : SyncEntityConfiguration<Subject>
+{
+    protected override void ConfigureFields(EntityTypeBuilder<Subject> subject)
+    {
+        subject.Property(s => s.Name).HasMaxLength(FieldLimits.Name);
+        subject.Property(s => s.ColorHex).HasMaxLength(FieldLimits.ColorHex);
+        subject.Property(s => s.DueTitle).HasMaxLength(FieldLimits.Name);
+    }
+}
+
 internal sealed class TopicConfiguration : SyncEntityConfiguration<Topic>
 {
-    protected override void ConfigureFields(EntityTypeBuilder<Topic> topic)
-    {
+    protected override void ConfigureFields(EntityTypeBuilder<Topic> topic) =>
         topic.Property(t => t.Name).HasMaxLength(FieldLimits.Name);
-        topic.Property(t => t.ColorHex).HasMaxLength(FieldLimits.ColorHex);
-        topic.Property(t => t.DueTitle).HasMaxLength(FieldLimits.Name);
-    }
 }
 
 internal sealed class SubtopicConfiguration : SyncEntityConfiguration<Subtopic>

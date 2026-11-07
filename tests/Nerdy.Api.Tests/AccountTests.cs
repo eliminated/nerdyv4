@@ -48,9 +48,12 @@ public sealed class AccountTests(NerdyApiFactory factory) : IClassFixture<NerdyA
             new CreateAssignmentRequest { Title = "Quiz", DueAt = DateTimeOffset.UtcNow.AddDays(3) })).ReadAsync<AssignmentDto>(HttpStatusCode.Created);
         await teacher.Client.PutAsJsonAsync($"/api/assignments/{otherAssignment.Id}/done", new SetAssignmentDoneRequest { IsDone = true });
 
+        Guid subjectId = Guid.NewGuid(), topicId = Guid.NewGuid();
         await teacher.Client.SyncAsync(0, new SyncChanges
         {
-            Topics = [new TopicDto { Id = Guid.NewGuid(), UpdatedAt = DateTimeOffset.UtcNow, Name = "Mine", ColorHex = "#112233" }],
+            Subjects = [new SubjectDto { Id = subjectId, UpdatedAt = DateTimeOffset.UtcNow, Name = "Mine", ColorHex = "#112233" }],
+            Topics = [new TopicDto { Id = topicId, UpdatedAt = DateTimeOffset.UtcNow, SubjectId = subjectId, Name = "Part one" }],
+            Subtopics = [new SubtopicDto { Id = Guid.NewGuid(), UpdatedAt = DateTimeOffset.UtcNow, TopicId = topicId, Name = "Section 1" }],
             Preferences = new PreferencesDto { UpdatedAt = DateTimeOffset.UtcNow, Json = "{}" },
         });
 
@@ -61,7 +64,9 @@ public sealed class AccountTests(NerdyApiFactory factory) : IClassFixture<NerdyA
         var db = scope.ServiceProvider.GetRequiredService<NerdyDbContext>();
         var id = teacher.Id;
         Assert.False(await db.Users.AnyAsync(u => u.Id == id));
+        Assert.False(await db.Subjects.AnyAsync(s => s.UserId == id));
         Assert.False(await db.Topics.AnyAsync(t => t.UserId == id));
+        Assert.False(await db.Subtopics.AnyAsync(s => s.UserId == id));
         Assert.False(await db.Preferences.AnyAsync(p => p.UserId == id));
         Assert.False(await db.SyncStates.AnyAsync(s => s.UserId == id));
         Assert.False(await db.RefreshTokens.AnyAsync(t => t.UserId == id));

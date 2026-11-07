@@ -67,8 +67,9 @@ public sealed partial class FocusSessionViewModel : ObservableObject, INavigatio
     public partial int ExitReasonIndex { get; set; } = -1;
 
     [ObservableProperty] public partial string TaskTitle { get; private set; } = "";
-    [ObservableProperty] public partial string TopicName { get; private set; } = "";
-    [ObservableProperty] public partial Brush? TopicBrush { get; private set; }
+    /// <summary>"Biology · Cell biology", "Biology", or "General".</summary>
+    [ObservableProperty] public partial string SubjectName { get; private set; } = "";
+    [ObservableProperty] public partial Brush? SubjectBrush { get; private set; }
     [ObservableProperty] public partial string TimeText { get; private set; } = "";
     [ObservableProperty] public partial string SubText { get; private set; } = "";
     [ObservableProperty] public partial string EndsText { get; private set; } = "";
@@ -134,9 +135,8 @@ public sealed partial class FocusSessionViewModel : ObservableObject, INavigatio
         IsAgendaLayout = prefs.HomeLayout == HomeLayout.Agenda;
         Wallpaper = prefs.Wallpaper;
         TaskTitle = _focus.TaskTitle;
-        var topic = _data.Topic(_focus.TopicId);
-        TopicName = topic?.Name ?? "General";
-        TopicBrush = ColorMix.Brush(topic?.ColorHex ?? ColorMix.ToHex(_theme.Accent));
+        SubjectName = _agenda.LinkLabel(_focus.SubjectId, _focus.TopicId);
+        SubjectBrush = ColorMix.Brush(_data.Subject(_focus.SubjectId)?.ColorHex ?? ColorMix.ToHex(_theme.Accent));
         BuildDock();
         BuildUpNext();
         Update();
@@ -207,7 +207,7 @@ public sealed partial class FocusSessionViewModel : ObservableObject, INavigatio
         var existing = _data.Notes.FirstOrDefault(n => n.Title == title);
         var line = $"{Fmt.Clock(_clock.LocalNow)}  {text}";
         if (existing is null)
-            _data.Save(new NoteDto { Id = Guid.NewGuid(), UpdatedAt = DateTimeOffset.UtcNow, Title = title, TopicId = _focus.TopicId, BodyText = line });
+            _data.Save(new NoteDto { Id = Guid.NewGuid(), UpdatedAt = DateTimeOffset.UtcNow, Title = title, SubjectId = _focus.SubjectId, TopicId = _focus.TopicId, BodyText = line });
         else
             _data.Save(existing with { BodyText = existing.BodyText + "\n" + line, BodyRtf = "" });
         QuickNote = "";
@@ -313,7 +313,7 @@ public sealed partial class FocusSessionViewModel : ObservableObject, INavigatio
         if (next is null) return;
         UpNextTitle = next.Title;
         UpNextTime = Fmt.Clock(next.Start);
-        UpNextBrush = ColorMix.Brush(next.ColorHex ?? _agenda.TopicColor(next.TopicId));
+        UpNextBrush = ColorMix.Brush(next.ColorHex ?? _agenda.SubjectColor(next.SubjectId));
     }
 
 }

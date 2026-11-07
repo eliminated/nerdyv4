@@ -35,13 +35,21 @@ public sealed record ExitRow(string Reason, string Meta, string? Note)
     public bool HasNote => !string.IsNullOrEmpty(Note);
     public string Quote => $"“{Note}”";
 }
-public sealed record HistoryRow(string Date, string Time, string Task, string Topic, Brush Dot, Symbol ModeIcon, string Mode, string Duration,
+public sealed record HistoryRow(string Date, string Time, string Task, string Subject, Brush Dot, Symbol ModeIcon, string Mode, string Duration,
     string Outcome, Brush PillBackground, Brush PillForeground, string? Note, Brush RowBackground)
 {
     public bool HasNote => Note is not null;
 }
 
-public sealed partial class TopicTimeRow(string name, Brush color, string time, string percent, double share, string sessions, Action open) : Controls.IShare
+/// <summary>Time on one topic, inside its subject's row.</summary>
+public sealed record TopicShareRow(string Name, string Time, string Percent);
+
+/// <summary>
+/// Time on one subject. When some of it was on particular topics, selecting the row shows the split by topic;
+/// otherwise it opens the subject.
+/// </summary>
+public sealed partial class SubjectTimeRow(string name, Brush color, string time, string percent, double share, string sessions,
+    IReadOnlyList<TopicShareRow> topics, Action? open) : ObservableObject, Controls.IShare
 {
     public string Name { get; } = name;
     public Brush Color { get; } = color;
@@ -49,9 +57,24 @@ public sealed partial class TopicTimeRow(string name, Brush color, string time, 
     public string Percent { get; } = percent;
     public double Share { get; } = share;
     public string Sessions { get; } = sessions;
+    public IReadOnlyList<TopicShareRow> Topics { get; } = topics;
+    public bool CanExpand { get; } = topics.Count > 0;
+    public bool CanOpen { get; } = open is not null;
+
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ChevronAngle))]
+    public partial bool IsExpanded { get; set; }
+
+    public double ChevronAngle => IsExpanded ? 90 : 0;
 
     [RelayCommand]
-    private void Open() => open();
+    private void Select()
+    {
+        if (CanExpand) IsExpanded = !IsExpanded;
+        else open?.Invoke();
+    }
+
+    [RelayCommand]
+    private void Open() => open?.Invoke();
 }
 
 public sealed partial class StatsViewModel : ObservableObject, INavigationAware
@@ -85,7 +108,7 @@ public sealed partial class StatsViewModel : ObservableObject, INavigationAware
     public ObservableCollection<ChartBar> Bars { get; } = [];
     public ObservableCollection<GridLine> GridLines { get; } = [];
     public ObservableCollection<LegendItem> Legend { get; } = [];
-    public ObservableCollection<TopicTimeRow> TopicRows { get; } = [];
+    public ObservableCollection<SubjectTimeRow> SubjectRows { get; } = [];
     public ObservableCollection<HeatRow> Heat { get; } = [];
     public ObservableCollection<string> HourLabels { get; } = [];
     public ObservableCollection<Brush> HeatLegend { get; } = [];
@@ -95,7 +118,7 @@ public sealed partial class StatsViewModel : ObservableObject, INavigationAware
 
     [ObservableProperty] public partial string RangeText { get; private set; } = "";
     [ObservableProperty] public partial double BarSpacing { get; private set; } = 18;
-    [ObservableProperty] public partial string TopicSummary { get; private set; } = "";
+    [ObservableProperty] public partial string SubjectSummary { get; private set; } = "";
     [ObservableProperty] public partial string UltraValue { get; private set; } = "";
     [ObservableProperty] public partial double UltraPercent { get; private set; }
     [ObservableProperty] public partial bool NoExits { get; private set; }
@@ -130,7 +153,7 @@ public sealed partial class StatsViewModel : ObservableObject, INavigationAware
 
     private void OnDataChanged(object? sender, DataChangedEventArgs e)
     {
-        if (e.Affects(DataKinds.Sessions | DataKinds.Topics)) Refresh();
+        if (e.Affects(DataKinds.Sessions | DataKinds.Subjects | DataKinds.Topics)) Refresh();
     }
 
     private void OnThemeChanged(object? sender, EventArgs e) => Refresh();
@@ -153,7 +176,7 @@ public sealed partial class StatsViewModel : ObservableObject, INavigationAware
 
         BuildKpis(r);
         BuildChart(r);
-        BuildTopics(r);
+        BuildSubjects(r);
         BuildHeatmap(r);
         BuildInsights(r);
         BuildUltra(r);
@@ -192,7 +215,7 @@ public sealed partial class StatsViewModel : ObservableObject, INavigationAware
             GridLines.Add(new GridLine(v / (double)r.AxisMaxMinutes * ChartHeight, v == 0 ? "0" : $"{v / 60.0:0.#}h"));
 
         Legend.Clear();
-        foreach (var t in _data.Topics) Legend.Add(new LegendItem(t.Name, ColorMix.Brush(t.ColorHex)));
+        foreach (var subject in _data.Subjects) Legend.Add(new LegendItem(subject.Name, ColorMix.Brush(subject.ColorHex)));
 
         Bars.Clear();
         for (var i = 0; i < r.Bars.Count; i++)
@@ -207,7 +230,7 @@ public sealed partial class StatsViewModel : ObservableObject, INavigationAware
             // Segments stack bottom-up; the top one gets the rounded corners.
             var segments = bar.Segments.Reverse().Select((s, index) => new BarSegment(
                 s.Minutes / (double)r.AxisMaxMinutes * ChartHeight,
-                ColorMix.Brush(_agenda.TopicColor(s.TopicId)),
+                ColorMix.Brush(_agenda.SubjectColor(s.SubjectId)),
                 index == 0 ? new Microsoft.UI.Xaml.CornerRadius(6, 6, 0, 0) : default)).ToList();
             if (segments.Count > 0) segments[^1] = segments[^1] with { Corners = new Microsoft.UI.Xaml.CornerRadius(segments.Count == 1 ? 6 : 0, segments.Count == 1 ? 6 : 0, 3, 3) };
             Bars.Add(new ChartBar(segments, label,
@@ -215,23 +238,28 @@ public sealed partial class StatsViewModel : ObservableObject, INavigationAware
                 bar.IsCurrent ? FontWeights.SemiBold : FontWeights.Normal,
                 _range == StatsRange.Term ? $"Week of {bar.Start:MMM d}" : $"{bar.Start:ddd, MMM d}",
                 $"{Fmt.HoursMinutes(bar.TotalMinutes)} focused",
-                bar.Segments.Select(s => new TipRow(_agenda.TopicName(s.TopicId), ColorMix.Brush(_agenda.TopicColor(s.TopicId)), Fmt.HoursMinutes(s.Minutes))).ToList(),
+                bar.Segments.Select(s => new TipRow(_agenda.SubjectName(s.SubjectId), ColorMix.Brush(_agenda.SubjectColor(s.SubjectId)), Fmt.HoursMinutes(s.Minutes))).ToList(),
                 new Microsoft.UI.Xaml.Thickness(BarSpacing / 2, 0, BarSpacing / 2, 0)));
         }
     }
 
-    private void BuildTopics(StatsReport r)
+    private void BuildSubjects(StatsReport r)
     {
-        TopicRows.Clear();
-        foreach (var t in r.ByTopic)
+        SubjectRows.Clear();
+        foreach (var subject in r.BySubject)
         {
-            var id = t.TopicId;
-            TopicRows.Add(new TopicTimeRow(_agenda.TopicName(id), ColorMix.Brush(_agenda.TopicColor(id)), Fmt.HoursMinutes(t.Minutes), $"{t.Percent}%",
-                t.Percent, $"{t.Sessions} session{(t.Sessions == 1 ? "" : "s")} · avg {t.AverageMinutes} min",
-                () => { if (id is { } topicId) _navigation.Navigate(NavSections.Topics, topicId); }));
+            var id = subject.SubjectId;
+            // The split is only worth showing when at least some of the time was on a particular topic.
+            var topics = subject.Topics.Any(t => t.TopicId is not null)
+                ? subject.Topics.Select(t => new TopicShareRow(_data.Topic(t.TopicId)?.Name ?? (t.TopicId is null ? "No topic picked" : "Deleted topic"),
+                    Fmt.HoursMinutes(t.Minutes), $"{t.Percent}%")).ToList()
+                : [];
+            Action? open = id is { } subjectId && _data.Subject(subjectId) is not null ? () => _navigation.Navigate(NavSections.Subjects, subjectId) : null;
+            SubjectRows.Add(new SubjectTimeRow(_agenda.SubjectName(id), ColorMix.Brush(_agenda.SubjectColor(id)), Fmt.HoursMinutes(subject.Minutes), $"{subject.Percent}%",
+                subject.Percent, $"{subject.Sessions} session{(subject.Sessions == 1 ? "" : "s")} · avg {subject.AverageMinutes} min", topics, open));
         }
         var label = _range switch { StatsRange.Week => "this week", StatsRange.Month => "30 days", _ => "term" };
-        TopicSummary = $"{Fmt.HoursMinutes(r.TotalMinutes)} across {r.ByTopic.Count} topic{(r.ByTopic.Count == 1 ? "" : "s")} · {label}";
+        SubjectSummary = $"{Fmt.HoursMinutes(r.TotalMinutes)} across {r.BySubject.Count} subject{(r.BySubject.Count == 1 ? "" : "s")} · {label}";
     }
 
     private void BuildHeatmap(StatsReport r)
@@ -273,9 +301,9 @@ public sealed partial class StatsViewModel : ObservableObject, INavigationAware
             Insights.Add(Make(Symbol.Calendar, ColorMix.Parse("#2F7DE1"), $"{strong.Day} is your strongest day, averaging {Fmt.HoursMinutes(strong.AverageMinutes)} of focus."));
         var endedEarly = r.Sessions.Count(s => !s.RanAsPlanned);
         Insights.Add(r.EarlyEnder is { } early
-            ? Make(Symbol.Warning, ColorMix.Parse("#E8743B"), $"{_agenda.TopicName(early.TopicId)} sessions end early most often ({early.EndedEarly} of {early.Sessions}).")
+            ? Make(Symbol.Warning, ColorMix.Parse("#E8743B"), $"{_agenda.SubjectName(early.SubjectId)} sessions end early most often ({early.EndedEarly} of {early.Sessions}).")
             : endedEarly > 0
-                // Too few sessions per topic to single one out, but don't claim everything ran to plan.
+                // Too few sessions per subject to single one out, but don't claim everything ran to plan.
                 ? Make(Symbol.Warning, ColorMix.Parse("#E8743B"), $"{endedEarly} of {r.Sessions.Count} sessions ended before their planned length.")
                 : Make(Symbol.CheckmarkCircle, ColorMix.Parse("#1F9D74"), "Every session in this period ran to its planned length."));
         var streak = r.Streak;
@@ -315,7 +343,7 @@ public sealed partial class StatsViewModel : ObservableObject, INavigationAware
             History.Add(new HistoryRow(
                 day == today ? "Today" : day == today.AddDays(-1) ? "Yesterday" : $"{day:ddd, MMM d}",
                 Fmt.Clock(s.Start), s.Task.Length == 0 ? "Focus session" : s.Task,
-                _agenda.TopicName(s.TopicId), ColorMix.Brush(_agenda.TopicColor(s.TopicId)),
+                _agenda.LinkLabel(s.SubjectId, s.TopicId), ColorMix.Brush(_agenda.SubjectColor(s.SubjectId)),
                 s.Mode == FocusMode.Ultra ? Symbol.ShieldLock : Symbol.TargetArrow,
                 s.Mode == FocusMode.Ultra ? "Ultra-Focus" : "Focus",
                 s.RanAsPlanned ? $"{s.ActualMinutes} min" : $"{s.ActualMinutes} / {s.PlannedMinutes} min",

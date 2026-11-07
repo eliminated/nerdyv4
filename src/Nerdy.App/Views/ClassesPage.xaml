@@ -198,7 +198,7 @@
                             <StackPanel Grid.Column="1" Spacing="2">
                                 <TextBlock Text="{x:Bind ViewModel.SharingTitle, Mode=OneWay}" Style="{StaticResource NerdyStrongStyle}" />
                                 <TextBlock Style="{StaticResource NerdyCaptionWrapStyle}"
-                                           Text="If you turn this on, your teacher sees how many minutes you focused each day, how many sessions you did and how many ran as planned, counting only sessions from the moment you turn it on. They never see your tasks, notes, topics or exit reasons. Your teacher always sees your name, email address and which class assignments you've marked done." />
+                                           Text="If you turn this on, your teacher sees how many minutes you focused each day, how many sessions you did and how many ran as planned, counting only sessions from the moment you turn it on. They never see your tasks, notes, subjects, topics or exit reasons. Your teacher always sees your name, email address and which class assignments you've marked done." />
                             </StackPanel>
                             <ToggleSwitch Grid.Column="2" IsOn="{x:Bind ViewModel.SharesFocus, Mode=TwoWay}" OnContent="" OffContent="" MinWidth="0" VerticalAlignment="Top"
                                           AutomationProperties.Name="Share my focus stats with my teacher" />

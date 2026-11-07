@@ -58,8 +58,8 @@
                 <StackPanel HorizontalAlignment="Center">
                     <TextBlock Text="{x:Bind ViewModel.TaskTitle, Mode=OneWay}" FontSize="22" FontWeight="SemiBold" HorizontalAlignment="Center" Style="{StaticResource NerdyTextBase}" />
                     <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center" Margin="0,4,0,0">
-                        <Ellipse Width="8" Height="8" Fill="{x:Bind ViewModel.TopicBrush, Mode=OneWay}" VerticalAlignment="Center" />
-                        <TextBlock Text="{x:Bind ViewModel.TopicName, Mode=OneWay}" FontSize="13" Foreground="{ThemeResource NerdyTextStrongBrush}" />
+                        <Ellipse Width="8" Height="8" Fill="{x:Bind ViewModel.SubjectBrush, Mode=OneWay}" VerticalAlignment="Center" />
+                        <TextBlock Text="{x:Bind ViewModel.SubjectName, Mode=OneWay}" FontSize="13" Foreground="{ThemeResource NerdyTextStrongBrush}" />
                     </StackPanel>
                 </StackPanel>
                 <Grid Width="340" Height="340">
@@ -123,8 +123,8 @@
                     </StackPanel>
                     <TextBlock Text="{x:Bind ViewModel.TaskTitle, Mode=OneWay}" FontSize="34" FontWeight="SemiBold" Margin="0,6,0,0" Style="{StaticResource NerdyTextBase}" />
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <Ellipse Width="8" Height="8" Fill="{x:Bind ViewModel.TopicBrush, Mode=OneWay}" VerticalAlignment="Center" />
-                        <TextBlock Text="{x:Bind ViewModel.TopicName, Mode=OneWay}" Foreground="{ThemeResource NerdyTextStrongBrush}" />
+                        <Ellipse Width="8" Height="8" Fill="{x:Bind ViewModel.SubjectBrush, Mode=OneWay}" VerticalAlignment="Center" />
+                        <TextBlock Text="{x:Bind ViewModel.SubjectName, Mode=OneWay}" Foreground="{ThemeResource NerdyTextStrongBrush}" />
                     </StackPanel>
                     <TextBlock x:Name="BigTime" Text="{x:Bind ViewModel.TimeText, Mode=OneWay}" FontSize="168" FontWeight="Light" CharacterSpacing="-40"
                                Margin="0,20,0,8" Style="{StaticResource NerdyTextBase}" LineHeight="168" />

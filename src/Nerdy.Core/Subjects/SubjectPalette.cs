@@ -1,7 +1,7 @@
-namespace Nerdy.Core.Topics;
+namespace Nerdy.Core.Subjects;
 
-/// <summary>Colours offered for topics and classes, starting with the prototype's subject colours.</summary>
-public static class TopicPalette
+/// <summary>Colours offered for subjects and classes, starting with the prototype's subject colours.</summary>
+public static class SubjectPalette
 {
     public static readonly IReadOnlyList<string> Colors =
     [

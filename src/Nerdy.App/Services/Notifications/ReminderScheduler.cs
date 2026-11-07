@@ -232,7 +232,7 @@ public sealed class ReminderScheduler
 
     private void SendReminder(ReminderDto r, string key)
     {
-        var topic = r.TopicId is { } t ? _agenda.TopicName(t) : null;
+        var topic = r.SubjectId is not null ? _agenda.LinkLabel(r.SubjectId, r.TopicId) : null;
         var when = r.HasDueTime && r.DueAt is { } d ? $"Due {Fmt.Clock(d.LocalDateTime)}" : "Due today";
         var id = r.Id.ToString();
         Notify(key, r.Title, topic is null ? when : $"{when} · {topic}", Open(NavSections.Reminders),
@@ -388,6 +388,7 @@ public sealed class ReminderScheduler
         var seconds = (int)(block.End - (block.Start > now ? block.Start : now)).TotalSeconds;
         _focus.DraftMode = block.AutoFocusMode;
         _focus.DraftTask = block.Title;
+        _focus.DraftSubjectId = block.SubjectId;
         _focus.DraftTopicId = block.TopicId;
         _focus.DraftSeconds = Math.Max(5 * 60, seconds / 60 * 60);
         await _focus.StartAsync();

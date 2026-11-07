@@ -68,6 +68,47 @@ public sealed class LocalDatabase : IAsyncDisposable
         }
     });
 
+    /// <summary>
+    /// Replaces every item row and sets the given meta values in one transaction, so an upgrade of the stored format
+    /// either happens completely or not at all.
+    /// </summary>
+    public Task ReplaceAllAsync(IReadOnlyCollection<Row> rows, IReadOnlyDictionary<string, string?> meta) => WriteAsync(async (conn, tx) =>
+    {
+        await using (var clear = conn.CreateCommand())
+        {
+            clear.Transaction = tx;
+            clear.CommandText = "DELETE FROM items";
+            await clear.ExecuteNonQueryAsync();
+        }
+
+        await using (var insert = conn.CreateCommand())
+        {
+            insert.Transaction = tx;
+            insert.CommandText = "INSERT INTO items (kind, id, json, dirty) VALUES ($k, $i, $j, $d)";
+            var k = insert.Parameters.Add("$k", SqliteType.Text);
+            var i = insert.Parameters.Add("$i", SqliteType.Text);
+            var j = insert.Parameters.Add("$j", SqliteType.Text);
+            var d = insert.Parameters.Add("$d", SqliteType.Integer);
+            foreach (var row in rows)
+            {
+                k.Value = row.Kind; i.Value = row.Id; j.Value = row.Json; d.Value = row.Dirty ? 1 : 0;
+                await insert.ExecuteNonQueryAsync();
+            }
+        }
+
+        foreach (var (key, value) in meta)
+        {
+            await using var cmd = conn.CreateCommand();
+            cmd.Transaction = tx;
+            cmd.CommandText = value is null
+                ? "DELETE FROM meta WHERE key = $k"
+                : "INSERT INTO meta (key, value) VALUES ($k, $v) ON CONFLICT(key) DO UPDATE SET value = excluded.value";
+            cmd.Parameters.AddWithValue("$k", key);
+            if (value is not null) cmd.Parameters.AddWithValue("$v", value);
+            await cmd.ExecuteNonQueryAsync();
+        }
+    });
+
     public async Task<string?> GetMetaAsync(string key)
     {
         await using var conn = await OpenConnectionAsync();

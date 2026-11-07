@@ -26,6 +26,13 @@ public static class SyncEndpoints
     private static async Task<Results<Ok<SyncResponse>, ValidationProblem, ProblemHttpResult>> SyncAsync(
         SyncRequest request, ClaimsPrincipal principal, SyncService sync, CancellationToken cancellationToken)
     {
+        // An older app would read subjects as topics and topics as subtopics, so it must update before it syncs.
+        // Its unsynced edits wait on the PC, and the updated app converts them.
+        if (request.Protocol < SyncProtocol.Current)
+        {
+            return ApiProblems.UpdateRequired("This version of Nerdy can't sync any more. Restart Nerdy to update it.");
+        }
+
         var errors = SyncValidator.Validate(request);
         if (errors.Any)
         {

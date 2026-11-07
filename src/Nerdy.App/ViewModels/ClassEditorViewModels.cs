@@ -2,7 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Nerdy.App.Services.Theming;
 using Nerdy.Contracts;
-using Nerdy.Core.Topics;
+using Nerdy.Core.Subjects;
 
 namespace Nerdy.App.ViewModels;
 
@@ -17,7 +17,7 @@ public sealed partial class ClassEditorViewModel : ObservableObject
         IsNew = existing is null;
         Name = existing?.Name ?? "";
         Subject = existing?.Subject ?? "";
-        SelectedColor = existing?.ColorHex ?? TopicPalette.Next(usedColors);
+        SelectedColor = existing?.ColorHex ?? SubjectPalette.Next(usedColors);
         RebuildSwatches();
     }
 
@@ -35,7 +35,7 @@ public sealed partial class ClassEditorViewModel : ObservableObject
     private void RebuildSwatches()
     {
         Swatches.Clear();
-        foreach (var hex in TopicPalette.Colors)
+        foreach (var hex in SubjectPalette.Colors)
             Swatches.Add(new SwatchItem(hex, ColorMix.Brush(hex),
                 hex.Equals(SelectedColor, StringComparison.OrdinalIgnoreCase) ? ColorMix.Brush(hex) : _theme.Brush("NerdyTransparentBrush"),
                 h => { SelectedColor = h; RebuildSwatches(); }));

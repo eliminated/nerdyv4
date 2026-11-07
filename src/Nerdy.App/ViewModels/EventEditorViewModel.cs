@@ -52,14 +52,13 @@ public sealed partial class EventEditorViewModel : ObservableObject
         _theme = theme;
         _original = existing;
 
-        Topics = [new Option<Guid?>("No topic", null), .. data.Topics.Select(t => new Option<Guid?>(t.Name, t.Id))];
+        Link = new StudyPicker(data, existing?.SubjectId, existing?.TopicId);
         var fresh = existing is null && start is null; // "New event" button rather than a calendar slot
         var s = existing?.StartsAt.LocalDateTime ?? start ?? NextHour(DateTime.Now);
         var e = existing?.EndsAt.LocalDateTime ?? Min(s.AddHours(1), s.Date + LastEnd); // events don't cross midnight
 
         Title = existing?.Title ?? "";
         Subtitle = existing?.Subtitle ?? "";
-        Topic = Topics.FirstOrDefault(t => t.Value == existing?.TopicId) ?? Topics[0];
         Date = new DateTimeOffset(s.Date);
         StartTime = s.TimeOfDay;
         EndTime = e.TimeOfDay;
@@ -99,14 +98,13 @@ public sealed partial class EventEditorViewModel : ObservableObject
     public string DialogTitle => IsNew ? "New event" : "Edit event";
     public bool IsSeries => _original?.RepeatDays is > 0;
 
-    public IReadOnlyList<Option<Guid?>> Topics { get; }
+    public StudyPicker Link { get; }
     public ObservableCollection<ChoiceItem> DayChips { get; } = [];
     public ObservableCollection<ChoiceItem> StartChips { get; } = [];
     public ObservableCollection<ChoiceItem> EndChips { get; } = [];
 
     [ObservableProperty, NotifyPropertyChangedFor(nameof(CanSave))] public partial string Title { get; set; }
     [ObservableProperty] public partial string Subtitle { get; set; }
-    [ObservableProperty] public partial Option<Guid?> Topic { get; set; }
     [ObservableProperty, NotifyPropertyChangedFor(nameof(StartsInPast))] public partial DateTimeOffset? Date { get; set; }
     [ObservableProperty, NotifyPropertyChangedFor(nameof(StartsInPast))] public partial TimeSpan StartTime { get; set; }
     [ObservableProperty] public partial TimeSpan EndTime { get; set; }
@@ -241,7 +239,8 @@ public sealed partial class EventEditorViewModel : ObservableObject
         {
             Title = Title.Trim(),
             Subtitle = string.IsNullOrWhiteSpace(Subtitle) ? null : Subtitle.Trim(),
-            TopicId = Topic.Value,
+            SubjectId = Link.SubjectId,
+            TopicId = Link.TopicId,
             StartsAt = new DateTimeOffset(start),
             EndsAt = new DateTimeOffset(end),
             IsAllDay = IsAllDay,

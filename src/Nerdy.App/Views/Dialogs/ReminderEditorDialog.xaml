@@ -12,7 +12,15 @@
 
     <StackPanel Spacing="14" Width="440">
         <TextBox Header="Reminder" Text="{x:Bind ViewModel.Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-        <ComboBox Header="Topic" HorizontalAlignment="Stretch" ItemsSource="{x:Bind ViewModel.Topics}" SelectedItem="{x:Bind ViewModel.Topic, Mode=TwoWay}" />
+        <Grid ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition />
+                <ColumnDefinition />
+            </Grid.ColumnDefinitions>
+            <ComboBox Header="Subject" HorizontalAlignment="Stretch" ItemsSource="{x:Bind ViewModel.Link.Subjects}" SelectedItem="{x:Bind ViewModel.Link.Subject, Mode=TwoWay}" />
+            <ComboBox Grid.Column="1" Header="Topic" HorizontalAlignment="Stretch" ItemsSource="{x:Bind ViewModel.Link.Topics}"
+                      SelectedItem="{x:Bind ViewModel.Link.Topic, Mode=TwoWay}" IsEnabled="{x:Bind ViewModel.Link.HasTopics, Mode=OneWay}" />
+        </Grid>
         <ToggleSwitch Header="Due date" IsOn="{x:Bind ViewModel.HasDate, Mode=TwoWay}" />
         <!-- Quick due times like the Focus durations; Custom shows the date and time pickers. -->
         <Border Style="{StaticResource NerdyCardStyle}" Padding="16,14" Visibility="{x:Bind ViewModel.HasDate, Mode=OneWay}">

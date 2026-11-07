@@ -9,7 +9,7 @@ public sealed class HelpDialog : ContentDialog
 {
     private static readonly (string Keys, string Action)[] Shortcuts =
     [
-        ("Ctrl + K", "Search notes, topics, reminders"),
+        ("Ctrl + K", "Search subjects, notes, reminders"),
         ("Ctrl + B", "Collapse or expand the sidebar"),
         ("Ctrl + ,", "Open settings"),
         ("Ctrl + N", "New item on the current page"),
