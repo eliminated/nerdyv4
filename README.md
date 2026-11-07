@@ -12,9 +12,13 @@
 
 The goal and objective for this project is to make an assistant app for generally to students, teachers and public users who wish to learn effectively without any distraction, and we can make most of the implementationt in order to make our objective according to their needs. 
 
+## DOWNLOAD
+
+Get the installer from [nerdy.nicholic.com](https://nerdy.nicholic.com/#install) or the [latest release](https://github.com/eliminated/nerdyv4/releases/latest) (`NerdyApp-win-Setup.exe`, Windows 10 2004+ or 11 on x64). It installs per user without admin rights and keeps Nerdy up to date. During the beta the installer isn't code-signed, so Windows SmartScreen asks you to confirm (**More info → Run anyway**).
+
 ## GETTING STARTED
 
-You need Windows 10 version 2004 (build 19041) or later, or Windows 11 (x64 or ARM64), and the [.NET 10 SDK](https://dotnet.microsoft.com/download).
+To build Nerdy yourself you need Windows 10 version 2004 (build 19041) or later, or Windows 11 (x64 or ARM64), and the [.NET 10 SDK](https://dotnet.microsoft.com/download).
 
 ```powershell
 # 1. The API, on http://localhost:5080 (uses a local SQLite database in Development)
@@ -30,6 +34,17 @@ dotnet test tests/Nerdy.Api.Tests
 ```
 
 How the pieces fit together is described in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md); deploying to Azure is covered in [infra/README.md](infra/README.md).
+
+## RELEASING
+
+Releases are built by [`.github/workflows/release.yml`](.github/workflows/release.yml) with [Velopack](https://velopack.io) when a version tag is pushed:
+
+```powershell
+git tag v0.1.1
+git push origin v0.1.1
+```
+
+The workflow publishes the app for win-x64, builds `NerdyApp-win-Setup.exe` (plus a full package and, from the second release on, a delta package) and publishes them as a GitHub release. Installed copies check that feed shortly after starting and every 6 hours, download the update in the background and offer a restart; an update that wasn't applied installs the next time Nerdy starts. Builds that weren't installed (development builds) never check. Versions are three-part (`major.minor.patch`); the Velopack package and the `vpk` tool in `.config/dotnet-tools.json` should stay on the same version.
 
 ## PRIVACY
 

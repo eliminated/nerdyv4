@@ -70,6 +70,7 @@ public partial class App : Application
         s.AddSingleton<Services.Notifications.NotificationService>();
         s.AddSingleton<Services.Notifications.ReminderScheduler>();
         s.AddSingleton<Services.Shell.AppLifetime>();
+        s.AddSingleton<Services.Updates.UpdateService>();
 
         s.AddSingleton<ShellViewModel>();
         s.AddTransient<AuthViewModel>();
@@ -118,6 +119,7 @@ public partial class App : Application
         Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().Activated += (_, _) =>
             MainWindow.DispatcherQueue.TryEnqueue(lifetime.ShowMainWindow);
 
+        _ = GetService<Services.Updates.UpdateService>().RunAsync();
         await GetService<SessionController>().StartAsync();
     }
 }

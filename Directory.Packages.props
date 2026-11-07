@@ -13,6 +13,8 @@
     <PackageVersion Include="CommunityToolkit.WinUI.Extensions" Version="8.2.251219" />
     <PackageVersion Include="CommunityToolkit.WinUI.Controls.Primitives" Version="8.2.251219" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.12" />
+    <!-- Installer and automatic updates from GitHub Releases; keep in step with the vpk tool in .github/workflows/release.yml. -->
+    <PackageVersion Include="Velopack" Version="1.2.161" />
 
     <!-- Data -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
