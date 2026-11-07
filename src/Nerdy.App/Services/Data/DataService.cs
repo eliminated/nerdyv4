@@ -94,7 +94,11 @@ public sealed class DataService(IClock clock, ILogger<DataService> logger)
         UserId = userId;
         _writes = Channel.CreateUnbounded<Func<Task>>(new UnboundedChannelOptions { SingleReader = true });
         _writer = Task.Run(() => DrainWritesAsync(_writes.Reader));
-        if (erased.Count > 0) Enqueue(d => d.UpsertAsync(erased));
+        if (erased.Count > 0)
+        {
+            Enqueue(d => d.UpsertAsync(erased));
+            Enqueue(d => d.TruncateLogAsync());
+        }
         Changed?.Invoke(this, new DataChangedEventArgs(DataKinds.All, fromSync: false));
     }
 
@@ -142,7 +146,11 @@ public sealed class DataService(IClock clock, ILogger<DataService> logger)
     }
 
     /// <summary>Keeps only a tombstone, so the deletion syncs but the content is gone from this PC and the server.</summary>
-    public void Delete<T>(T item) where T : SyncItemDto => Save(SyncTombstone.Of(item));
+    public void Delete<T>(T item) where T : SyncItemDto
+    {
+        Save(SyncTombstone.Of(item));
+        Enqueue(db => db.TruncateLogAsync());
+    }
 
     /// <summary>Saves several edits as one change notification (e.g. a whole study block).</summary>
     public void SaveMany<T>(IEnumerable<T> items) where T : SyncItemDto
@@ -208,6 +216,7 @@ public sealed class DataService(IClock clock, ILogger<DataService> logger)
     {
         var rows = new List<LocalDatabase.Row>();
         var kinds = DataKinds.None;
+        var erasing = false;
 
         void Apply<T>(EntitySet<T> set, List<T> sent, List<T> received) where T : SyncItemDto
         {
@@ -218,6 +227,7 @@ public sealed class DataService(IClock clock, ILogger<DataService> logger)
             {
                 var r = remote.IsDeleted ? SyncTombstone.Of(remote) : remote;
                 if (!set.ApplyRemote(r)) continue;
+                erasing |= r.IsDeleted;
                 rows.Add(new LocalDatabase.Row(set.Kind, r.Id.ToString(), JsonSerializer.Serialize(r, Json), false));
                 kinds |= set.Changes;
             }
@@ -243,6 +253,7 @@ public sealed class DataService(IClock clock, ILogger<DataService> logger)
             rows.Add(new LocalDatabase.Row(PreferencesKind, PreferencesId, JsonSerializer.Serialize(_preferencesDto, Json), _preferencesDirty));
 
         if (rows.Count > 0) Enqueue(db => db.UpsertAsync(rows));
+        if (erasing) Enqueue(db => db.TruncateLogAsync());
         if (kinds != DataKinds.None) Changed?.Invoke(this, new DataChangedEventArgs(kinds, fromSync: true));
     }
 
