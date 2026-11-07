@@ -94,6 +94,17 @@ public sealed class LocalDatabase : IAsyncDisposable
         await cmd.ExecuteNonQueryAsync();
     });
 
+    /// <summary>
+    /// Moves the write-ahead log into the database file and empties it. Run after erasing content: the log still holds
+    /// the pages as they were before, which secure_delete only overwrites in the database file itself.
+    /// </summary>
+    public async Task TruncateLogAsync()
+    {
+        await _gate.WaitAsync();
+        try { await ExecuteAsync("PRAGMA wal_checkpoint(TRUNCATE)"); }
+        finally { _gate.Release(); }
+    }
+
     private async Task WriteAsync(Func<SqliteConnection, SqliteTransaction, Task> work)
     {
         await _gate.WaitAsync();
