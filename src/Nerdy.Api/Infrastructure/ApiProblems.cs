@@ -21,4 +21,8 @@ public static class ApiProblems
 
     public static ProblemHttpResult Conflict(string code, string title) =>
         Problem(StatusCodes.Status409Conflict, code, title);
+
+    /// <summary>426 Upgrade Required: the app is too old for this request and must update first.</summary>
+    public static ProblemHttpResult UpdateRequired(string title) =>
+        Problem(StatusCodes.Status426UpgradeRequired, ApiErrorCodes.UpdateRequired, title);
 }

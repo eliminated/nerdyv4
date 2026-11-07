@@ -4,6 +4,7 @@ using Nerdy.Contracts;
 using Nerdy.Core.Formatting;
 using Nerdy.Core.Scheduling;
 using Nerdy.Core.Stats;
+using Nerdy.Core.Subjects;
 using Nerdy.Core.Time;
 
 namespace Nerdy.App.Services;
@@ -17,12 +18,13 @@ public sealed record AgendaItem
     public required OccurrenceSource Source { get; init; }
     public required string Title { get; init; }
     public string? Subtitle { get; init; }
+    public Guid? SubjectId { get; init; }
     public Guid? TopicId { get; init; }
     public required DateTime Start { get; init; }
     public required DateTime End { get; init; }
     public bool IsAllDay { get; init; }
     public bool IsMilestone { get; init; }
-    /// <summary>Overrides the topic colour (class colour for assignments).</summary>
+    /// <summary>Overrides the subject colour (class colour for assignments).</summary>
     public string? ColorHex { get; init; }
     public bool AutoFocus { get; init; }
     public FocusMode AutoFocusMode { get; init; }
@@ -34,7 +36,7 @@ public sealed record AgendaItem
     public double EndHour => End.Date > Start.Date ? 24 : End.TimeOfDay.TotalHours;
 }
 
-/// <summary>Calendar and progress queries shared by Home, Calendar, Schedule, Topics and notifications.</summary>
+/// <summary>Calendar and progress queries shared by Home, Calendar, Schedule, Subjects and notifications.</summary>
 public sealed class AgendaService(DataService data, ClassesService classes, IClock clock)
 {
     public DateTime Now => clock.LocalNow;
@@ -55,6 +57,7 @@ public sealed class AgendaService(DataService data, ClassesService classes, IClo
                     Source = OccurrenceSource.Event,
                     Title = e.Title,
                     Subtitle = e.Subtitle,
+                    SubjectId = e.SubjectId,
                     TopicId = e.TopicId,
                     Start = o.Start,
                     End = o.End,
@@ -97,26 +100,36 @@ public sealed class AgendaService(DataService data, ClassesService classes, IClo
     /// <summary>The next thing on today's agenda that hasn't ended yet.</summary>
     public AgendaItem? NextToday() => On(Today).FirstOrDefault(i => !i.IsAllDay && i.End > Now);
 
-    public AgendaItem? NextForTopic(Guid topicId) =>
-        Between(Now, Now.AddDays(21)).FirstOrDefault(i => i.TopicId == topicId && i.Start >= Now);
+    /// <summary>The next study block or event of a subject (or of one of its topics) in the next three weeks.</summary>
+    public AgendaItem? NextFor(Guid subjectId, Guid? topicId = null) =>
+        Between(Now, Now.AddDays(21)).FirstOrDefault(i => i.SubjectId == subjectId && (topicId is null || i.TopicId == topicId) && i.Start >= Now);
 
     /// <summary>"Today 2:00 PM", "Sat 10:00 AM", or "Nothing planned".</summary>
-    public string NextLabel(Guid topicId)
+    public string NextLabel(Guid subjectId, Guid? topicId = null)
     {
-        if (NextForTopic(topicId) is not { } next) return "Nothing planned";
+        if (NextFor(subjectId, topicId) is not { } next) return "Nothing planned";
         var day = next.Date == Today ? "Today" : next.Date == Today.AddDays(1) ? "Tomorrow" : next.Start.ToString("ddd");
         return $"{day} {Fmt.Clock(next.Start)}";
     }
 
-    /// <summary>Average progress of a topic's subtopics (0–100).</summary>
-    public int TopicProgress(Guid topicId)
+    /// <summary>The average of all the subtopics in a subject (0–100), or null when it has none yet.</summary>
+    public int? SubjectProgress(Guid subjectId) => StudyProgress.Average(data.SubtopicsInSubject(subjectId).Select(s => s.Progress));
+
+    /// <summary>The average of a topic's subtopics (0–100), or null when it has none yet.</summary>
+    public int? TopicProgress(Guid topicId) => StudyProgress.Average(data.SubtopicsOf(topicId).Select(s => s.Progress));
+
+    public string SubjectColor(Guid? subjectId) => data.Subject(subjectId)?.ColorHex ?? NoSubjectColor;
+    public string SubjectName(Guid? subjectId) => data.Subject(subjectId)?.Name ?? NoSubjectName;
+
+    /// <summary>"Biology · Cell biology", "Biology", or "General" for something not linked to a subject.</summary>
+    public string LinkLabel(Guid? subjectId, Guid? topicId)
     {
-        var subs = data.SubtopicsOf(topicId);
-        return subs.Count == 0 ? 0 : (int)Math.Round(subs.Average(s => s.Progress));
+        if (data.Subject(subjectId) is not { } subject) return NoSubjectName;
+        return data.Topic(topicId) is { } topic && topic.SubjectId == subject.Id ? $"{subject.Name} · {topic.Name}" : subject.Name;
     }
 
-    public string TopicColor(Guid? topicId) => data.Topic(topicId)?.ColorHex ?? "#64748B";
-    public string TopicName(Guid? topicId) => data.Topic(topicId)?.Name ?? "General";
+    public const string NoSubjectName = "General";
+    public const string NoSubjectColor = "#64748B";
 
     /// <summary>Reminders due today or overdue (not done), plus today's class assignments, soonest first.</summary>
     public IReadOnlyList<ReminderDto> DueToday() =>
@@ -130,6 +143,7 @@ public sealed class AgendaService(DataService data, ClassesService classes, IClo
         data.Sessions.Select(s => new SessionRecord
         {
             Id = s.Id,
+            SubjectId = s.SubjectId,
             TopicId = s.TopicId,
             Task = s.Task,
             Start = s.StartedAt.LocalDateTime,

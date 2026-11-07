@@ -3,6 +3,7 @@ using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 using Nerdy.App.Models;
 using Nerdy.Contracts;
+using Nerdy.Core.Storage;
 using Nerdy.Core.Time;
 
 namespace Nerdy.App.Services.Data;
@@ -11,8 +12,10 @@ namespace Nerdy.App.Services.Data;
 public enum DataKinds
 {
     None = 0,
-    Topics = 1, Subtopics = 2, Events = 4, Reminders = 8, Notes = 16, Sessions = 32, Preferences = 64,
-    All = Topics | Subtopics | Events | Reminders | Notes | Sessions | Preferences
+    Subjects = 1, Topics = 2, Subtopics = 4, Events = 8, Reminders = 16, Notes = 32, Sessions = 64, Preferences = 128,
+    /// <summary>Anything on the Subjects page: subjects, topics or subtopics.</summary>
+    Study = Subjects | Topics | Subtopics,
+    All = Study | Events | Reminders | Notes | Sessions | Preferences
 }
 
 public sealed class DataChangedEventArgs(DataKinds kinds, bool fromSync) : EventArgs
@@ -34,7 +37,12 @@ public sealed class DataService(IClock clock, ILogger<DataService> logger)
 
     private const string PreferencesKind = "prefs";
     private const string PreferencesId = "prefs";
+    /// <summary>The <see cref="LocalSchema"/> version the store is in; absent means 1 (Nerdy 0.1.0).</summary>
+    private const string SchemaKey = "schema";
+    /// <summary>Owned by <see cref="Focus.FocusSessionService"/>, but holds a subject id that upgrades must convert.</summary>
+    private const string ActiveFocusKey = "focus.active";
 
+    private readonly EntitySet<SubjectDto> _subjects = new("subject", DataKinds.Subjects);
     private readonly EntitySet<TopicDto> _topics = new("topic", DataKinds.Topics);
     private readonly EntitySet<SubtopicDto> _subtopics = new("subtopic", DataKinds.Subtopics);
     private readonly EntitySet<CalendarEventDto> _events = new("event", DataKinds.Events);
@@ -67,9 +75,13 @@ public sealed class DataService(IClock clock, ILogger<DataService> logger)
         _preferencesDirty = false;
         _preferences = new Preferences();
 
+        var stored = await db.LoadAllAsync();
+        if (await db.GetMetaAsync(SchemaKey) != LocalSchema.Current.ToString())
+            stored = await UpgradeAsync(db, stored);
+
         // Deleted items saved before tombstones existed still hold their content: erase it now.
         var erased = new List<LocalDatabase.Row>();
-        foreach (var row in await db.LoadAllAsync())
+        foreach (var row in stored)
         {
             try
             {
@@ -102,6 +114,22 @@ public sealed class DataService(IClock clock, ILogger<DataService> logger)
         Changed?.Invoke(this, new DataChangedEventArgs(DataKinds.All, fromSync: false));
     }
 
+    /// <summary>Converts a store written by an older Nerdy (see <see cref="LocalSchema"/>), all in one transaction.</summary>
+    private async Task<List<LocalDatabase.Row>> UpgradeAsync(LocalDatabase db, List<LocalDatabase.Row> rows)
+    {
+        var upgraded = LocalSchema.AddSubjects(rows.Select(r => new StoredRow(r.Kind, r.Id, r.Json, r.Dirty)))
+            .Select(r => new LocalDatabase.Row(r.Kind, r.Id, r.Json, r.Dirty))
+            .ToList();
+        var activeFocus = LocalSchema.AddSubjectsToActiveSession(await db.GetMetaAsync(ActiveFocusKey));
+        await db.ReplaceAllAsync(upgraded, new Dictionary<string, string?>
+        {
+            [ActiveFocusKey] = activeFocus,
+            [SchemaKey] = LocalSchema.Current.ToString(),
+        });
+        if (rows.Count > 0) logger.LogInformation("Upgraded {Count} stored rows to local schema {Schema}", rows.Count, LocalSchema.Current);
+        return upgraded;
+    }
+
     public async Task CloseAsync()
     {
         if (_db is null) return;
@@ -116,11 +144,20 @@ public sealed class DataService(IClock clock, ILogger<DataService> logger)
 
     // ---------- Queries ----------
 
-    public IReadOnlyList<TopicDto> Topics => _topics.Live.OrderBy(t => t.SortOrder).ThenBy(t => t.Name).ToList();
+    public IReadOnlyList<SubjectDto> Subjects => _subjects.Live.OrderBy(s => s.SortOrder).ThenBy(s => s.Name).ToList();
+    public SubjectDto? Subject(Guid? id) => id is { } g ? _subjects.Get(g) : null;
+    public IReadOnlyList<TopicDto> TopicsOf(Guid subjectId) =>
+        _topics.Live.Where(t => t.SubjectId == subjectId).OrderBy(t => t.SortOrder).ThenBy(t => t.Name).ToList();
     public TopicDto? Topic(Guid? id) => id is { } g ? _topics.Get(g) : null;
     public IReadOnlyList<SubtopicDto> SubtopicsOf(Guid topicId) =>
         _subtopics.Live.Where(s => s.TopicId == topicId).OrderBy(s => s.SortOrder).ThenBy(s => s.Name).ToList();
     public SubtopicDto? Subtopic(Guid? id) => id is { } g ? _subtopics.Get(g) : null;
+    /// <summary>Every subtopic in a subject, across its topics.</summary>
+    public IEnumerable<SubtopicDto> SubtopicsInSubject(Guid subjectId)
+    {
+        var topics = _topics.Live.Where(t => t.SubjectId == subjectId).Select(t => t.Id).ToHashSet();
+        return _subtopics.Live.Where(s => topics.Contains(s.TopicId));
+    }
     public IEnumerable<CalendarEventDto> Events => _events.Live;
     public CalendarEventDto? Event(Guid id) => _events.Get(id);
     public IEnumerable<ReminderDto> Reminders => _reminders.Live;
@@ -199,6 +236,7 @@ public sealed class DataService(IClock clock, ILogger<DataService> logger)
 
     internal SyncChanges CollectDirty() => new()
     {
+        Subjects = _subjects.Dirty(),
         Topics = _topics.Dirty(),
         Subtopics = _subtopics.Dirty(),
         Events = _events.Dirty(),
@@ -233,6 +271,7 @@ public sealed class DataService(IClock clock, ILogger<DataService> logger)
             }
         }
 
+        Apply(_subjects, pushed.Subjects, incoming.Subjects);
         Apply(_topics, pushed.Topics, incoming.Topics);
         Apply(_subtopics, pushed.Subtopics, incoming.Subtopics);
         Apply(_events, pushed.Events, incoming.Events);
@@ -259,7 +298,7 @@ public sealed class DataService(IClock clock, ILogger<DataService> logger)
 
     // ---------- Internals ----------
 
-    private IEnumerable<IEntitySet> Sets => [_topics, _subtopics, _events, _reminders, _notes, _sessions];
+    private IEnumerable<IEntitySet> Sets => [_subjects, _topics, _subtopics, _events, _reminders, _notes, _sessions];
 
     private EntitySet<T> SetFor<T>() where T : SyncItemDto => (EntitySet<T>)Sets.First(s => s is EntitySet<T>);
 

@@ -470,6 +470,7 @@ public sealed partial class SettingsViewModel : ObservableObject, INavigationAwa
         SyncState.Syncing => "Syncing…",
         SyncState.Offline => "Offline. Changes are saved on this PC and sync when you're back online.",
         SyncState.Error => "The last sync didn't finish. Nerdy will try again shortly.",
+        SyncState.UpdateRequired => "Nerdy needs an update before it can sync. It's downloading; your changes are safe on this PC.",
         _ => _sync.LastSyncedAt is { } at ? $"Last synced {Fmt.Clock(at.LocalDateTime)}" : "Not synced yet"
     };
 
@@ -503,7 +504,7 @@ public sealed partial class SettingsViewModel : ObservableObject, INavigationAwa
     private async Task DeleteAccountAsync()
     {
         var confirmed = await _dialogs.ConfirmAsync("Delete your Nerdy account?",
-            "This permanently deletes your account and everything in it: topics, notes, reminders, focus history and any classes you teach. Nerdy's copy on this PC is removed too. It can't be undone.",
+            "This permanently deletes your account and everything in it: subjects, topics, notes, reminders, focus history and any classes you teach. Nerdy's copy on this PC is removed too. It can't be undone.",
             "Delete account", destructive: true);
         if (!confirmed) return;
         await RunAsync(() => _auth.DeleteAccountAsync(), null);

@@ -36,7 +36,7 @@
                     </Button>
                 </Grid>
                 <TextBox PlaceholderText="Search notes" Text="{x:Bind ViewModel.Search, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Search notes" />
-                <ComboBox HorizontalAlignment="Stretch" ItemsSource="{x:Bind ViewModel.FilterOptions}" SelectedItem="{x:Bind ViewModel.Filter, Mode=TwoWay}" AutomationProperties.Name="Filter by topic" />
+                <ComboBox HorizontalAlignment="Stretch" ItemsSource="{x:Bind ViewModel.FilterOptions}" SelectedItem="{x:Bind ViewModel.Filter, Mode=TwoWay}" AutomationProperties.Name="Filter by subject or topic" />
             </StackPanel>
             <ScrollViewer Grid.Row="1" Padding="8,0,8,12">
                 <StackPanel>
@@ -80,23 +80,30 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <Ellipse Width="8" Height="8" Fill="{x:Bind ViewModel.TopicDot, Mode=OneWay}" VerticalAlignment="Center" />
-                <ComboBox Grid.Column="1" MinWidth="140" ItemsSource="{x:Bind ViewModel.TopicOptions}" SelectedItem="{x:Bind ViewModel.Topic, Mode=TwoWay}" AutomationProperties.Name="Topic" />
-                <fi:SymbolIcon Grid.Column="2" Symbol="ChevronRight" FontSize="14" Foreground="{ThemeResource NerdyTextSecondaryBrush}" />
-                <ComboBox Grid.Column="3" MinWidth="140" ItemsSource="{x:Bind ViewModel.SubtopicOptions}" SelectedItem="{x:Bind ViewModel.Subtopic, Mode=TwoWay}" AutomationProperties.Name="Subtopic" />
-                <Button Grid.Column="5" Style="{StaticResource NerdyOutlineButtonStyle}" Height="30" FontSize="13" Command="{x:Bind ViewModel.FocusOnNoteCommand}">
+                <Ellipse Width="8" Height="8" Fill="{x:Bind ViewModel.SubjectDot, Mode=OneWay}" VerticalAlignment="Center" />
+                <!-- Breadcrumb: subject › topic › subtopic; each further level shows once the one before has something to pick. -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                    <ComboBox MinWidth="130" ItemsSource="{x:Bind ViewModel.SubjectOptions}" SelectedItem="{x:Bind ViewModel.Subject, Mode=TwoWay}" AutomationProperties.Name="Subject" />
+                    <StackPanel Orientation="Horizontal" Spacing="8" Visibility="{x:Bind ViewModel.HasTopicOptions, Mode=OneWay}">
+                        <fi:SymbolIcon Symbol="ChevronRight" FontSize="14" Foreground="{ThemeResource NerdyTextSecondaryBrush}" VerticalAlignment="Center" />
+                        <ComboBox MinWidth="130" ItemsSource="{x:Bind ViewModel.TopicOptions}" SelectedItem="{x:Bind ViewModel.Topic, Mode=TwoWay}" AutomationProperties.Name="Topic" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8" Visibility="{x:Bind ViewModel.HasSubtopicOptions, Mode=OneWay}">
+                        <fi:SymbolIcon Symbol="ChevronRight" FontSize="14" Foreground="{ThemeResource NerdyTextSecondaryBrush}" VerticalAlignment="Center" />
+                        <ComboBox MinWidth="130" ItemsSource="{x:Bind ViewModel.SubtopicOptions}" SelectedItem="{x:Bind ViewModel.Subtopic, Mode=TwoWay}" AutomationProperties.Name="Subtopic" />
+                    </StackPanel>
+                </StackPanel>
+                <Button Grid.Column="3" Style="{StaticResource NerdyOutlineButtonStyle}" Height="30" FontSize="13" Command="{x:Bind ViewModel.FocusOnNoteCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <fi:SymbolIcon Symbol="TargetArrow" FontSize="16" />
                         <TextBlock Text="Focus on this note" />
                     </StackPanel>
                 </Button>
-                <Button Grid.Column="6" Style="{StaticResource NerdyIconButtonStyle}" Width="30" Height="30" ToolTipService.ToolTip="More" AutomationProperties.Name="More">
+                <Button Grid.Column="4" Style="{StaticResource NerdyIconButtonStyle}" Width="30" Height="30" ToolTipService.ToolTip="More" AutomationProperties.Name="More">
                     <fi:SymbolIcon Symbol="MoreHorizontal" FontSize="20" />
                     <Button.Flyout>
                         <MenuFlyout Placement="BottomEdgeAlignedRight">

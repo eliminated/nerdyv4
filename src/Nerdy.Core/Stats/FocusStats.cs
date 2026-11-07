@@ -19,6 +19,8 @@ public enum HistoryFilter { All, Focus, Ultra, EndedEarly }
 public sealed record SessionRecord
 {
     public required Guid Id { get; init; }
+    public Guid? SubjectId { get; init; }
+    /// <summary>Optional, narrows <see cref="SubjectId"/>.</summary>
     public Guid? TopicId { get; init; }
     public string Task { get; init; } = "";
     public required DateTime Start { get; init; }
@@ -33,25 +35,27 @@ public sealed record SessionRecord
     public bool RanAsPlanned => Outcome == FocusOutcome.Completed;
 }
 
-public sealed record TopicInfo(Guid Id, string Name, string ColorHex);
-
 public enum DeltaUnit { Percent, Points }
 
 /// <summary>A headline number with its change vs the previous period (null when there is nothing to compare).</summary>
 public sealed record Kpi(double Value, int? Delta, DeltaUnit Unit);
 
-public sealed record TopicMinutes(Guid? TopicId, int Minutes);
+public sealed record SubjectMinutes(Guid? SubjectId, int Minutes);
 
-public sealed record StatsBar(DateOnly Start, DateOnly End, int TotalMinutes, IReadOnlyList<TopicMinutes> Segments)
+public sealed record StatsBar(DateOnly Start, DateOnly End, int TotalMinutes, IReadOnlyList<SubjectMinutes> Segments)
 {
     public bool IsCurrent { get; init; }
 }
 
-public sealed record TopicTime(Guid? TopicId, int Minutes, int Percent, int Sessions, int AverageMinutes);
+/// <summary>Time on one subject; <see cref="Topics"/> splits it by topic (null = no topic picked), largest first.</summary>
+public sealed record SubjectTime(Guid? SubjectId, int Minutes, int Percent, int Sessions, int AverageMinutes, IReadOnlyList<TopicTime> Topics);
+
+/// <summary>Time on one topic of a subject; <see cref="Percent"/> is its share of the subject's time.</summary>
+public sealed record TopicTime(Guid? TopicId, int Minutes, int Percent, int Sessions);
 
 public sealed record PeakWindow(int StartHour, int SharePercent);
 public sealed record StrongestDay(DayOfWeek Day, double AverageMinutes);
-public sealed record EarlyEnder(Guid? TopicId, int EndedEarly, int Sessions);
+public sealed record EarlyEnder(Guid? SubjectId, int EndedEarly, int Sessions);
 public sealed record Streak(int Current, int Best);
 
 public sealed record UltraSummary(int Held, int Total, IReadOnlyList<SessionRecord> RecentExits);
@@ -73,7 +77,7 @@ public sealed record StatsReport
     public required int AxisMaxMinutes { get; init; }
     public required int AxisStepMinutes { get; init; }
 
-    public required IReadOnlyList<TopicTime> ByTopic { get; init; }
+    public required IReadOnlyList<SubjectTime> BySubject { get; init; }
     public required int TotalMinutes { get; init; }
 
     /// <summary>[weekday index Monday=0, hour column] → minutes, for sessions starting inside the study day.</summary>
@@ -125,8 +129,8 @@ public static class FocusStats
         var bars = groups.Select(g =>
         {
             var inGroup = cur.Where(s => s.Date >= g.Start && s.Date <= g.End).ToList();
-            var segments = inGroup.GroupBy(s => s.TopicId)
-                .Select(x => new TopicMinutes(x.Key, Sum(x)))
+            var segments = inGroup.GroupBy(s => s.SubjectId)
+                .Select(x => new SubjectMinutes(x.Key, Sum(x)))
                 .OrderByDescending(x => x.Minutes)
                 .ToList();
             return new StatsBar(g.Start, g.End, Sum(inGroup), segments) { IsCurrent = today >= g.Start && today <= g.End };
@@ -135,12 +139,20 @@ public static class FocusStats
         var step = maxBar > 600 ? 300 : maxBar > 300 ? 120 : 60;
         var axisMax = (int)Math.Ceiling(maxBar / (double)step) * step;
 
-        var byTopic = cur.GroupBy(s => s.TopicId)
+        var bySubject = cur.GroupBy(s => s.SubjectId)
             .Select(g =>
             {
                 var m = Sum(g);
                 var c = g.Count();
-                return new TopicTime(g.Key, m, total == 0 ? 0 : (int)Math.Round(m * 100.0 / total), c, c == 0 ? 0 : (int)Math.Round((double)m / c));
+                var topics = g.GroupBy(s => s.TopicId)
+                    .Select(t =>
+                    {
+                        var tm = Sum(t);
+                        return new TopicTime(t.Key, tm, m == 0 ? 0 : (int)Math.Round(tm * 100.0 / m), t.Count());
+                    })
+                    .OrderByDescending(t => t.Minutes)
+                    .ToList();
+                return new SubjectTime(g.Key, m, total == 0 ? 0 : (int)Math.Round(m * 100.0 / total), c, c == 0 ? 0 : (int)Math.Round((double)m / c), topics);
             })
             .OrderByDescending(t => t.Minutes)
             .ToList();
@@ -187,7 +199,7 @@ public static class FocusStats
                 .First();
         }
 
-        EarlyEnder? early = cur.GroupBy(s => s.TopicId)
+        EarlyEnder? early = cur.GroupBy(s => s.SubjectId)
             .Select(g => new EarlyEnder(g.Key, g.Count(s => !s.RanAsPlanned), g.Count()))
             .Where(e => e.Sessions >= 3 && e.EndedEarly > 0)
             .OrderByDescending(e => (double)e.EndedEarly / e.Sessions)
@@ -209,7 +221,7 @@ public static class FocusStats
             Bars = bars,
             AxisMaxMinutes = axisMax,
             AxisStepMinutes = step,
-            ByTopic = byTopic,
+            BySubject = bySubject,
             TotalMinutes = total,
             Heatmap = heat,
             HeatmapStartHour = studyDayStartHour,

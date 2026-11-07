@@ -23,6 +23,8 @@ public static class ApiErrorCodes
 
     /// <summary>Concurrent syncs of the same account kept colliding; retry shortly.</summary>
     public const string SyncConflict = "sync_conflict";
+    /// <summary>426: the app syncs in an older format than the server accepts; it must update first.</summary>
+    public const string UpdateRequired = "update_required";
 
     public const string NotFound = "not_found";
     public const string TeacherRequired = "teacher_required";

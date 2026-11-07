@@ -22,6 +22,7 @@ public static class SyncTombstone
     {
         SyncItemDto tombstone = item switch
         {
+            SubjectDto => new SubjectDto { Id = item.Id, UpdatedAt = item.UpdatedAt, IsDeleted = true },
             TopicDto => new TopicDto { Id = item.Id, UpdatedAt = item.UpdatedAt, IsDeleted = true },
             SubtopicDto => new SubtopicDto { Id = item.Id, UpdatedAt = item.UpdatedAt, IsDeleted = true },
             CalendarEventDto => new CalendarEventDto { Id = item.Id, UpdatedAt = item.UpdatedAt, IsDeleted = true },
@@ -34,7 +35,8 @@ public static class SyncTombstone
     }
 }
 
-public sealed record TopicDto : SyncItemDto
+/// <summary>The top level a user studies under, e.g. Biology. Everything else links to a subject and shares its colour.</summary>
+public sealed record SubjectDto : SyncItemDto
 {
     public string Name { get; init; } = "";
     public string ColorHex { get; init; } = "#5B5BD6";
@@ -43,6 +45,15 @@ public sealed record TopicDto : SyncItemDto
     public int SortOrder { get; init; }
 }
 
+/// <summary>A part of a subject, e.g. Cell biology. Its progress is the average of its subtopics.</summary>
+public sealed record TopicDto : SyncItemDto
+{
+    public Guid SubjectId { get; init; }
+    public string Name { get; init; } = "";
+    public int SortOrder { get; init; }
+}
+
+/// <summary>A part of a topic, e.g. Mitosis, with the progress the user sets.</summary>
 public sealed record SubtopicDto : SyncItemDto
 {
     public Guid TopicId { get; init; }
@@ -56,6 +67,8 @@ public sealed record CalendarEventDto : SyncItemDto
 {
     public string Title { get; init; } = "";
     public string? Subtitle { get; init; }
+    public Guid? SubjectId { get; init; }
+    /// <summary>Optional, narrows <see cref="SubjectId"/> to one of its topics.</summary>
     public Guid? TopicId { get; init; }
     public DateTimeOffset StartsAt { get; init; }
     public DateTimeOffset EndsAt { get; init; }
@@ -78,6 +91,7 @@ public sealed record ReminderDto : SyncItemDto
     public string Title { get; init; } = "";
     public DateTimeOffset? DueAt { get; init; }
     public bool HasDueTime { get; init; }
+    public Guid? SubjectId { get; init; }
     public Guid? TopicId { get; init; }
     public bool IsStarred { get; init; }
     public bool IsDone { get; init; }
@@ -94,6 +108,7 @@ public sealed record ChecklistItemDto
 public sealed record NoteDto : SyncItemDto
 {
     public string Title { get; init; } = "";
+    public Guid? SubjectId { get; init; }
     public Guid? TopicId { get; init; }
     public Guid? SubtopicId { get; init; }
     /// <summary>Rich text body as RTF (what the WinUI RichEditBox reads and writes).</summary>
@@ -105,6 +120,7 @@ public sealed record NoteDto : SyncItemDto
 
 public sealed record FocusSessionDto : SyncItemDto
 {
+    public Guid? SubjectId { get; init; }
     public Guid? TopicId { get; init; }
     public string Task { get; init; } = "";
     public FocusMode Mode { get; init; }
@@ -129,6 +145,7 @@ public sealed record PreferencesDto
 
 public sealed record SyncChanges
 {
+    public List<SubjectDto> Subjects { get; init; } = [];
     public List<TopicDto> Topics { get; init; } = [];
     public List<SubtopicDto> Subtopics { get; init; } = [];
     public List<CalendarEventDto> Events { get; init; } = [];
@@ -138,12 +155,24 @@ public sealed record SyncChanges
     public PreferencesDto? Preferences { get; init; }
 
     public bool IsEmpty =>
-        Topics.Count == 0 && Subtopics.Count == 0 && Events.Count == 0 && Reminders.Count == 0 &&
+        Subjects.Count == 0 && Topics.Count == 0 && Subtopics.Count == 0 && Events.Count == 0 && Reminders.Count == 0 &&
         Notes.Count == 0 && FocusSessions.Count == 0 && Preferences is null;
+}
+
+public static class SyncProtocol
+{
+    /// <summary>2: subjects above topics and subtopics (Nerdy 0.1.1). 0/1: topics and subtopics only (Nerdy 0.1.0).</summary>
+    public const int Current = 2;
 }
 
 public sealed record SyncRequest
 {
+    /// <summary>
+    /// The sync format the app speaks. The server turns away older formats with <see cref="ApiErrorCodes.UpdateRequired"/>
+    /// rather than misreading them. Apps from before this field existed send nothing, which reads as 0.
+    /// </summary>
+    public int Protocol { get; init; }
+
     /// <summary>The <see cref="SyncResponse.Version"/> from the last successful sync; 0 on first sync.</summary>
     public long SinceVersion { get; init; }
     public SyncChanges Changes { get; init; } = new();
@@ -151,6 +180,8 @@ public sealed record SyncRequest
 
 public sealed record SyncResponse
 {
+    /// <summary>The server's <see cref="SyncProtocol"/>; the app ignores a response in an older format than its own.</summary>
+    public int Protocol { get; init; }
     public required long Version { get; init; }
     public required SyncChanges Changes { get; init; }
     public required DateTimeOffset ServerTime { get; init; }

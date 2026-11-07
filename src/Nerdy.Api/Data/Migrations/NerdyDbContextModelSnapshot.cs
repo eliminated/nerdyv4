@@ -331,6 +331,9 @@ namespace Nerdy.Api.Data.Migrations
                     b.Property<DateTimeOffset>("StartsAt")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<Guid?>("SubjectId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Subtitle")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -502,6 +505,9 @@ namespace Nerdy.Api.Data.Migrations
                     b.Property<DateTimeOffset>("StartedAt")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<Guid?>("SubjectId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Task")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -547,6 +553,9 @@ namespace Nerdy.Api.Data.Migrations
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
+
+                    b.Property<Guid?>("SubjectId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("SubtopicId")
                         .HasColumnType("uniqueidentifier");
@@ -643,6 +652,9 @@ namespace Nerdy.Api.Data.Migrations
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<Guid?>("SubjectId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -665,6 +677,50 @@ namespace Nerdy.Api.Data.Migrations
                     b.HasIndex("UserId", "Version");
 
                     b.ToTable("Reminders");
+                });
+
+            modelBuilder.Entity("Nerdy.Api.Data.Entities.Subject", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ColorHex")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .HasColumnType("nvarchar(7)");
+
+                    b.Property<DateTimeOffset?>("DueAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("DueTitle")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("Version")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Version");
+
+                    b.ToTable("Subjects");
                 });
 
             modelBuilder.Entity("Nerdy.Api.Data.Entities.Subtopic", b =>
@@ -710,18 +766,6 @@ namespace Nerdy.Api.Data.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("ColorHex")
-                        .IsRequired()
-                        .HasMaxLength(7)
-                        .HasColumnType("nvarchar(7)");
-
-                    b.Property<DateTimeOffset?>("DueAt")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<string>("DueTitle")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
@@ -732,6 +776,9 @@ namespace Nerdy.Api.Data.Migrations
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("int");
+
+                    b.Property<Guid>("SubjectId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("datetimeoffset");
@@ -938,6 +985,15 @@ namespace Nerdy.Api.Data.Migrations
                 });
 
             modelBuilder.Entity("Nerdy.Api.Data.Entities.Reminder", b =>
+                {
+                    b.HasOne("Nerdy.Api.Data.Entities.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Nerdy.Api.Data.Entities.Subject", b =>
                 {
                     b.HasOne("Nerdy.Api.Data.Entities.AppUser", null)
                         .WithMany()

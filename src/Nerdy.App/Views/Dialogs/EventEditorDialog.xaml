@@ -15,14 +15,16 @@
     <ScrollViewer MaxHeight="560" Padding="0,0,12,0">
         <StackPanel Spacing="14" Width="460">
             <TextBox Header="Title" PlaceholderText="e.g. Calculus II lecture" Text="{x:Bind ViewModel.Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-            <Grid ColumnSpacing="12">
+<Grid ColumnSpacing="12">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition />
                     <ColumnDefinition />
                 </Grid.ColumnDefinitions>
-                <ComboBox Header="Topic" HorizontalAlignment="Stretch" ItemsSource="{x:Bind ViewModel.Topics}" SelectedItem="{x:Bind ViewModel.Topic, Mode=TwoWay}" />
-                <CalendarDatePicker Grid.Column="1" Header="Date" HorizontalAlignment="Stretch" Date="{x:Bind ViewModel.Date, Mode=TwoWay}" />
+                <ComboBox Header="Subject" HorizontalAlignment="Stretch" ItemsSource="{x:Bind ViewModel.Link.Subjects}" SelectedItem="{x:Bind ViewModel.Link.Subject, Mode=TwoWay}" />
+                <ComboBox Grid.Column="1" Header="Topic" HorizontalAlignment="Stretch" ItemsSource="{x:Bind ViewModel.Link.Topics}"
+                          SelectedItem="{x:Bind ViewModel.Link.Topic, Mode=TwoWay}" IsEnabled="{x:Bind ViewModel.Link.HasTopics, Mode=OneWay}" />
             </Grid>
+            <CalendarDatePicker Header="Date" HorizontalAlignment="Stretch" Date="{x:Bind ViewModel.Date, Mode=TwoWay}" />
             <ToggleSwitch Header="All day" IsOn="{x:Bind ViewModel.IsAllDay, Mode=TwoWay}" />
             <!-- Start and end: quick buttons like the Focus durations; Custom shows a time picker. -->
             <Border Style="{StaticResource NerdyCardStyle}" Padding="16,14" Visibility="{x:Bind ViewModel.ShowTimes, Mode=OneWay}">

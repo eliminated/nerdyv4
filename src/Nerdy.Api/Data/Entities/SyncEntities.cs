@@ -4,7 +4,7 @@ namespace Nerdy.Api.Data.Entities;
 
 // Server copies of the personal, synced entities. They mirror the DTOs in Nerdy.Contracts/Sync.cs
 // plus the owner and the sync version that last changed them (see "Sync protocol" in docs/ARCHITECTURE.md).
-// References between synced rows (TopicId, SubtopicId, ...) are deliberately not foreign keys: rows arrive
+// References between synced rows (SubjectId, TopicId, SubtopicId, ...) are deliberately not foreign keys: rows arrive
 // in any order, deletes are soft, and the client owns referential integrity.
 
 public abstract class SyncEntity
@@ -19,12 +19,19 @@ public abstract class SyncEntity
     public bool IsDeleted { get; set; }
 }
 
-public sealed class Topic : SyncEntity
+public sealed class Subject : SyncEntity
 {
     public string Name { get; set; } = "";
     public string ColorHex { get; set; } = "";
     public string? DueTitle { get; set; }
     public DateTimeOffset? DueAt { get; set; }
+    public int SortOrder { get; set; }
+}
+
+public sealed class Topic : SyncEntity
+{
+    public Guid SubjectId { get; set; }
+    public string Name { get; set; } = "";
     public int SortOrder { get; set; }
 }
 
@@ -40,6 +47,7 @@ public sealed class CalendarEvent : SyncEntity
 {
     public string Title { get; set; } = "";
     public string? Subtitle { get; set; }
+    public Guid? SubjectId { get; set; }
     public Guid? TopicId { get; set; }
     public DateTimeOffset StartsAt { get; set; }
     public DateTimeOffset EndsAt { get; set; }
@@ -58,6 +66,7 @@ public sealed class Reminder : SyncEntity
     public string Title { get; set; } = "";
     public DateTimeOffset? DueAt { get; set; }
     public bool HasDueTime { get; set; }
+    public Guid? SubjectId { get; set; }
     public Guid? TopicId { get; set; }
     public bool IsStarred { get; set; }
     public bool IsDone { get; set; }
@@ -68,6 +77,7 @@ public sealed class Reminder : SyncEntity
 public sealed class Note : SyncEntity
 {
     public string Title { get; set; } = "";
+    public Guid? SubjectId { get; set; }
     public Guid? TopicId { get; set; }
     public Guid? SubtopicId { get; set; }
     public string BodyRtf { get; set; } = "";
@@ -78,6 +88,7 @@ public sealed class Note : SyncEntity
 
 public sealed class FocusSession : SyncEntity
 {
+    public Guid? SubjectId { get; set; }
     public Guid? TopicId { get; set; }
     public string Task { get; set; } = "";
     public FocusMode Mode { get; set; }

@@ -13,7 +13,7 @@ using Windows.UI.Text;
 
 namespace Nerdy.App.ViewModels.Items;
 
-/// <summary>A reminder or a class assignment, shown with a round check, its due time and topic/class colour.</summary>
+/// <summary>A reminder or a class assignment, shown with a round check, its due time and subject/class colour.</summary>
 public sealed partial class ReminderItemViewModel : ObservableObject
 {
     private readonly ReminderDto? _reminder;
@@ -40,8 +40,8 @@ public sealed partial class ReminderItemViewModel : ObservableObject
             IsStarred = reminder.IsStarred;
             DueAt = reminder.DueAt?.LocalDateTime;
             DueText = reminder.DueAt is { } d ? Fmt.Due(d.LocalDateTime, reminder.HasDueTime, today) : "No date";
-            ContextText = data.Topic(reminder.TopicId)?.Name ?? "General";
-            ColorHex = data.Topic(reminder.TopicId)?.ColorHex ?? ColorMix.ToHex(theme.Accent);
+            ContextText = LinkText(data, reminder.SubjectId, reminder.TopicId);
+            ColorHex = data.Subject(reminder.SubjectId)?.ColorHex ?? ColorMix.ToHex(theme.Accent);
             Notes = reminder.Notes;
         }
         else if (assignment is not null)
@@ -56,6 +56,13 @@ public sealed partial class ReminderItemViewModel : ObservableObject
         }
         IsOverdue = !IsDone && DueAt is { } due && (reminder?.HasDueTime == false ? DateOnly.FromDateTime(due) < today : due < DateTime.Now);
         Refresh();
+    }
+
+    /// <summary>"Biology · Cell biology", "Biology", or "General".</summary>
+    private static string LinkText(DataService data, Guid? subjectId, Guid? topicId)
+    {
+        if (data.Subject(subjectId) is not { } subject) return AgendaService.NoSubjectName;
+        return data.Topic(topicId) is { } topic && topic.SubjectId == subject.Id ? $"{subject.Name} · {topic.Name}" : subject.Name;
     }
 
     public static ReminderItemViewModel For(ReminderDto r, DataService data, ClassesService classes, ThemeService theme, ToastService toasts, DateOnly today) =>

@@ -2,6 +2,7 @@ using System.ComponentModel;
 using Microsoft.Extensions.Logging;
 using Nerdy.App.Services.Focus;
 using Nerdy.App.Services.Shell;
+using Nerdy.App.Services.Sync;
 using Velopack;
 using Velopack.Sources;
 
@@ -23,16 +24,20 @@ public sealed class UpdateService
     private readonly ToastService _toasts;
     private readonly FocusSessionService _focus;
     private readonly AppLifetime _lifetime;
+    private readonly SyncService _sync;
     private readonly ILogger<UpdateService> _logger;
     private VelopackAsset? _ready;
+    private bool _checking;
 
-    public UpdateService(ToastService toasts, FocusSessionService focus, AppLifetime lifetime, ILogger<UpdateService> logger)
+    public UpdateService(ToastService toasts, FocusSessionService focus, AppLifetime lifetime, SyncService sync, ILogger<UpdateService> logger)
     {
         _toasts = toasts;
         _focus = focus;
         _lifetime = lifetime;
+        _sync = sync;
         _logger = logger;
         _focus.PropertyChanged += OnFocusChanged;
+        _sync.PropertyChanged += OnSyncChanged;
     }
 
     /// <summary>Runs for the life of the app. Call once from the UI thread.</summary>
@@ -49,6 +54,8 @@ public sealed class UpdateService
 
     private async Task CheckAsync()
     {
+        if (_checking || !_manager.IsInstalled) return;
+        _checking = true;
         try
         {
             if (_ready is null)
@@ -66,6 +73,10 @@ public sealed class UpdateService
             // Offline, GitHub's rate limit, a full disk: try again at the next check.
             _logger.LogInformation("Update check failed: {Message}", ex.Message);
         }
+        finally
+        {
+            _checking = false;
+        }
     }
 
     private void OfferRestart()
@@ -81,6 +92,12 @@ public sealed class UpdateService
         // The updater waits for Nerdy to quit normally (saving everything), installs the update, then starts it again.
         _manager.WaitExitThenApplyUpdates(release, silent: true, restart: true);
         _lifetime.Quit();
+    }
+
+    // The server stopped accepting this version: look for the update now rather than at the next 6-hourly check.
+    private void OnSyncChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SyncService.State) && _sync.State == SyncState.UpdateRequired) _ = CheckAsync();
     }
 
     // A session that ends is a good moment to offer the restart that was held back.

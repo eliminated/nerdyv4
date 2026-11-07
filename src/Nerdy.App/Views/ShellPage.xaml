@@ -38,7 +38,7 @@
             <TitleBar.Content>
                 <Grid Width="420" HorizontalAlignment="Center">
                     <AutoSuggestBox x:Name="SearchBox"
-                                    PlaceholderText="Search notes, topics, reminders"
+                                    PlaceholderText="Search subjects, notes, reminders"
                                     VerticalAlignment="Center"
                                     ItemsSource="{x:Bind ViewModel.SearchResults}"
                                     TextChanged="OnSearchTextChanged"

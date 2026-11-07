@@ -17,12 +17,15 @@ internal static class SyncValidator
         }
 
         var changes = request.Changes;
-        Each(errors, "changes.topics", changes.Topics, (path, t) =>
+        Each(errors, "changes.subjects", changes.Subjects, (path, s) =>
         {
-            errors.MaxLength($"{path}.name", t.Name, FieldLimits.Name);
-            errors.ColorHex($"{path}.colorHex", t.ColorHex);
-            errors.MaxLength($"{path}.dueTitle", t.DueTitle, FieldLimits.Name);
+            errors.MaxLength($"{path}.name", s.Name, FieldLimits.Name);
+            errors.ColorHex($"{path}.colorHex", s.ColorHex);
+            errors.MaxLength($"{path}.dueTitle", s.DueTitle, FieldLimits.Name);
         });
+
+        Each(errors, "changes.topics", changes.Topics, (path, t) =>
+            errors.MaxLength($"{path}.name", t.Name, FieldLimits.Name));
 
         Each(errors, "changes.subtopics", changes.Subtopics, (path, s) =>
         {

@@ -198,49 +198,79 @@
 
                 <Border Grid.Column="1" Style="{StaticResource NerdyCardStyle}">
                     <StackPanel>
-                        <TextBlock Text="Time by topic" Style="{StaticResource NerdyCardTitleStyle}" />
-                        <TextBlock Text="{x:Bind ViewModel.TopicSummary, Mode=OneWay}" Style="{StaticResource NerdySecondaryStyle}" Margin="0,0,0,14" />
+                        <TextBlock Text="Time by subject" Style="{StaticResource NerdyCardTitleStyle}" />
+                        <TextBlock Text="{x:Bind ViewModel.SubjectSummary, Mode=OneWay}" Style="{StaticResource NerdySecondaryStyle}" Margin="0,0,0,14" />
                         <Border Height="10" CornerRadius="6" Background="{ThemeResource NerdySubtleFillBrush}" Margin="0,0,0,16">
-                            <ItemsControl ItemsSource="{x:Bind ViewModel.TopicRows}" IsTabStop="False">
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.SubjectRows}" IsTabStop="False">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
                                         <controls:ShareBarPanel Spacing="2" />
                                     </ItemsPanelTemplate>
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:TopicTimeRow">
+                                    <DataTemplate x:DataType="vm:SubjectTimeRow">
                                         <Border Background="{x:Bind Color}" Height="10" />
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </Border>
-                        <ItemsControl ItemsSource="{x:Bind ViewModel.TopicRows}" IsTabStop="False">
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.SubjectRows}" IsTabStop="False">
                             <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:TopicTimeRow">
-                                    <Button Style="{StaticResource PlainButtonStyle}" Command="{x:Bind OpenCommand}" HorizontalAlignment="Stretch"
-                                            HorizontalContentAlignment="Stretch" Padding="6,9" CornerRadius="8" AutomationProperties.Name="{x:Bind Name}">
-                                        <Grid ColumnSpacing="10">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <Border Width="10" Height="10" CornerRadius="3" Background="{x:Bind Color}" VerticalAlignment="Center" />
-                                            <StackPanel Grid.Column="1">
-                                                <TextBlock Text="{x:Bind Name}" FontWeight="Medium" Style="{StaticResource NerdyTextBase}" TextTrimming="CharacterEllipsis" />
-                                                <TextBlock Text="{x:Bind Sessions}" Style="{StaticResource NerdyCaptionStyle}" />
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="2" HorizontalAlignment="Right">
-                                                <TextBlock Text="{x:Bind Time}" Style="{StaticResource NerdyStrongStyle}" HorizontalAlignment="Right" />
-                                                <TextBlock Text="{x:Bind Percent}" Style="{StaticResource NerdyCaptionStyle}" HorizontalAlignment="Right" />
-                                            </StackPanel>
-                                        </Grid>
-                                    </Button>
+                                <DataTemplate x:DataType="vm:SubjectTimeRow">
+                                    <StackPanel>
+                                        <Button Style="{StaticResource PlainButtonStyle}" Command="{x:Bind SelectCommand}" HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Stretch" Padding="6,9" CornerRadius="8" AutomationProperties.Name="{x:Bind Name}">
+                                            <Grid ColumnSpacing="10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Border Width="10" Height="10" CornerRadius="3" Background="{x:Bind Color}" VerticalAlignment="Center" />
+                                                <StackPanel Grid.Column="1">
+                                                    <TextBlock Text="{x:Bind Name}" FontWeight="Medium" Style="{StaticResource NerdyTextBase}" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{x:Bind Sessions}" Style="{StaticResource NerdyCaptionStyle}" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2" HorizontalAlignment="Right">
+                                                    <TextBlock Text="{x:Bind Time}" Style="{StaticResource NerdyStrongStyle}" HorizontalAlignment="Right" />
+                                                    <TextBlock Text="{x:Bind Percent}" Style="{StaticResource NerdyCaptionStyle}" HorizontalAlignment="Right" />
+                                                </StackPanel>
+                                                <fi:SymbolIcon Grid.Column="3" Symbol="ChevronRight" FontSize="14" Foreground="{ThemeResource NerdyTextSecondaryBrush}"
+                                                               VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5" Visibility="{x:Bind CanExpand}">
+                                                    <fi:SymbolIcon.RenderTransform>
+                                                        <RotateTransform Angle="{x:Bind ChevronAngle, Mode=OneWay}" />
+                                                    </fi:SymbolIcon.RenderTransform>
+                                                </fi:SymbolIcon>
+                                            </Grid>
+                                        </Button>
+                                        <!-- Split by topic -->
+                                        <StackPanel Padding="26,0,6,8" Spacing="6" Visibility="{x:Bind IsExpanded, Mode=OneWay}">
+                                            <ItemsControl ItemsSource="{x:Bind Topics}" IsTabStop="False">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="vm:TopicShareRow">
+                                                        <Grid ColumnSpacing="10" Padding="0,3">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition />
+                                                                <ColumnDefinition Width="Auto" />
+                                                                <ColumnDefinition Width="40" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock Text="{x:Bind Name}" FontSize="13" Style="{StaticResource NerdyTextBase}" TextTrimming="CharacterEllipsis" />
+                                                            <TextBlock Grid.Column="1" Text="{x:Bind Time}" FontSize="13" Style="{StaticResource NerdyTextBase}" />
+                                                            <TextBlock Grid.Column="2" Text="{x:Bind Percent}" HorizontalAlignment="Right" Style="{StaticResource NerdyCaptionStyle}" />
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <Button Style="{StaticResource NerdyLinkButtonStyle}" Padding="0" Content="Open subject" Command="{x:Bind OpenCommand}"
+                                                    Visibility="{x:Bind CanOpen}" />
+                                        </StackPanel>
+                                    </StackPanel>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                         <TextBlock Text="No focus time in this period." Style="{StaticResource NerdySecondaryStyle}"
-                                   Visibility="{x:Bind h:B.NoItems(ViewModel.TopicRows.Count), Mode=OneWay}" />
+                                   Visibility="{x:Bind h:B.NoItems(ViewModel.SubjectRows.Count), Mode=OneWay}" />
                     </StackPanel>
                 </Border>
             </Grid>
@@ -404,7 +434,7 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="Date" Style="{StaticResource NerdyCaptionStyle}" FontWeight="SemiBold" />
                         <TextBlock Grid.Column="1" Text="Session" Style="{StaticResource NerdyCaptionStyle}" FontWeight="SemiBold" />
-                        <TextBlock Grid.Column="2" Text="Topic" Style="{StaticResource NerdyCaptionStyle}" FontWeight="SemiBold" />
+                        <TextBlock Grid.Column="2" Text="Subject" Style="{StaticResource NerdyCaptionStyle}" FontWeight="SemiBold" />
                         <TextBlock Grid.Column="3" Text="Mode" Style="{StaticResource NerdyCaptionStyle}" FontWeight="SemiBold" />
                         <TextBlock Grid.Column="4" Text="Duration" Style="{StaticResource NerdyCaptionStyle}" FontWeight="SemiBold" />
                         <TextBlock Grid.Column="5" Text="Outcome" Style="{StaticResource NerdyCaptionStyle}" FontWeight="SemiBold" />
@@ -431,7 +461,7 @@
                                         <TextBlock Grid.Column="1" Text="{x:Bind Task}" FontWeight="Medium" Style="{StaticResource NerdyTextBase}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                             <Ellipse Width="8" Height="8" Fill="{x:Bind Dot}" VerticalAlignment="Center" />
-                                            <TextBlock Text="{x:Bind Topic}" FontSize="13" Style="{StaticResource NerdyTextBase}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{x:Bind Subject}" FontSize="13" Style="{StaticResource NerdyTextBase}" TextTrimming="CharacterEllipsis" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                                             <fi:SymbolIcon Symbol="{x:Bind ModeIcon}" FontSize="16" Foreground="{ThemeResource NerdyTextSecondaryBrush}" />

@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Logging;
+using System.Net;
 using Microsoft.UI.Dispatching;
 using Nerdy.App.Services.Api;
 using Nerdy.App.Services.Auth;
@@ -9,7 +10,12 @@ using Windows.Networking.Connectivity;
 
 namespace Nerdy.App.Services.Sync;
 
-public enum SyncState { Idle, Syncing, Offline, Error }
+public enum SyncState
+{
+    Idle, Syncing, Offline, Error,
+    /// <summary>The server no longer accepts this version's format. Edits wait on this PC until Nerdy updates.</summary>
+    UpdateRequired
+}
 
 /// <summary>
 /// Keeps the local store and the server in step (protocol in docs/ARCHITECTURE.md): on start, ~2 s after local
@@ -98,8 +104,15 @@ public sealed partial class SyncService : ObservableObject
         {
             var since = long.TryParse(await _data.GetMetaAsync(VersionKey), out var v) ? v : 0;
             var pushed = _data.CollectDirty();
-            var response = await _api.SyncAsync(new SyncRequest { SinceVersion = since, Changes = pushed });
+            var response = await _api.SyncAsync(new SyncRequest { Protocol = SyncProtocol.Current, SinceVersion = since, Changes = pushed });
             if (_data.UserId != userId) return; // signed out / switched account while waiting
+            if (response.Protocol < SyncProtocol.Current)
+            {
+                // A server that hasn't been updated yet would hand back rows in the old shape: keep the local copy as it is.
+                _logger.LogWarning("Sync skipped: the server speaks sync protocol {Server}, this app {App}", response.Protocol, SyncProtocol.Current);
+                State = SyncState.Error;
+                return;
+            }
 
             _data.ApplySync(pushed, response.Changes);
             await _data.SetMetaAsync(VersionKey, response.Version.ToString());
@@ -110,6 +123,11 @@ public sealed partial class SyncService : ObservableObject
         catch (OfflineException)
         {
             State = SyncState.Offline;
+        }
+        catch (ApiException ex) when (ex.Status == HttpStatusCode.UpgradeRequired)
+        {
+            _logger.LogWarning("Sync refused until Nerdy updates: {Message}", ex.UserMessage);
+            State = SyncState.UpdateRequired;
         }
         catch (ApiException ex)
         {

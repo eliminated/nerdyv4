@@ -10,6 +10,7 @@ namespace Nerdy.Api.Data;
 public sealed class NerdyDbContext(DbContextOptions<NerdyDbContext> options)
     : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>(options)
 {
+    public DbSet<Subject> Subjects => Set<Subject>();
     public DbSet<Topic> Topics => Set<Topic>();
     public DbSet<Subtopic> Subtopics => Set<Subtopic>();
     public DbSet<CalendarEvent> CalendarEvents => Set<CalendarEvent>();

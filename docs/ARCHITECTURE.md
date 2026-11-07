@@ -1,7 +1,7 @@
 # Nerdy — Architecture
 
 Nerdy is a native Windows study planner for students, teachers, and lifelong learners: calendar, recurring
-study blocks with clash detection, reminders, topics with progress, notes, Focus / Ultra-Focus sessions that
+study blocks with clash detection, reminders, subjects (topics and subtopics with progress), notes, Focus / Ultra-Focus sessions that
 really block distractions, statistics, and teacher classes. Reference design: the Claude Design prototype
 (see `docs/DESIGN.md`).
 
@@ -43,12 +43,13 @@ All personal entities are synced and share: `Id (Guid, client-generated)`, `Upda
 
 | Entity | Fields |
 |---|---|
-| Topic | Name, ColorHex, DueTitle?, DueAt?, SortOrder |
-| Subtopic | TopicId, Name, Progress (0–100), SortOrder |
-| CalendarEvent | Title, Subtitle?, TopicId?, StartsAt, EndsAt, IsAllDay, IsMilestone (exam/deadline), RepeatDays (bitmask Mon=1 … Sun=64, 0 = once), RepeatUntil?, ReminderMinutes?, AutoFocus, AutoFocusMode, SeriesId? (sessions created together by one study block) |
-| Reminder | Title, DueAt?, HasDueTime, TopicId?, IsStarred, IsDone, CompletedAt?, Notes? |
-| Note | Title, TopicId?, SubtopicId?, BodyRtf, BodyText (plain text for search/snippets), Checklist [{Text, Done}] |
-| FocusSession | TopicId?, Task, Mode (Focus/Ultra), PlannedSeconds, ActualSeconds, StartedAt, EndedAt, Outcome (Completed/EndedEarly/EmergencyExit/Interrupted), ExitReason?, ExitNote? |
+| Subject | Name, ColorHex, DueTitle?, DueAt?, SortOrder. Everything that links to a subject uses its colour |
+| Topic | SubjectId, Name, SortOrder. Progress = average of its subtopics |
+| Subtopic | TopicId, Name, Progress (0–100), SortOrder. A subject's progress is the average of all its subtopics |
+| CalendarEvent | Title, Subtitle?, SubjectId?, TopicId? (a topic of that subject), StartsAt, EndsAt, IsAllDay, IsMilestone (exam/deadline), RepeatDays (bitmask Mon=1 … Sun=64, 0 = once), RepeatUntil?, ReminderMinutes?, AutoFocus, AutoFocusMode, SeriesId? (sessions created together by one study block) |
+| Reminder | Title, DueAt?, HasDueTime, SubjectId?, TopicId?, IsStarred, IsDone, CompletedAt?, Notes? |
+| Note | Title, SubjectId?, TopicId?, SubtopicId?, BodyRtf, BodyText (plain text for search/snippets), Checklist [{Text, Done}] |
+| FocusSession | SubjectId?, TopicId?, Task, Mode (Focus/Ultra), PlannedSeconds, ActualSeconds, StartedAt, EndedAt, Outcome (Completed/EndedEarly/EmergencyExit/Interrupted), ExitReason?, ExitNote? |
 | Preferences | One JSON document per user (`PreferencesDto.Json`) + UpdatedAt. Schema owned by the app so new settings need no server change |
 
 Server-only entities: `AppUser` (Identity: DisplayName, Role, OnboardingCompleted), `RefreshToken`, `ExternalLoginCode`,
@@ -56,7 +57,13 @@ Server-only entities: `AppUser` (Identity: DisplayName, Role, OnboardingComplete
 
 ## Sync protocol
 
-`POST /api/sync` with `SyncRequest { SinceVersion, Changes }` → `SyncResponse { Version, Changes, ServerTime }`.
+`POST /api/sync` with `SyncRequest { Protocol, SinceVersion, Changes }` → `SyncResponse { Protocol, Version, Changes, ServerTime }`.
+
+`Protocol` is the sync format (`SyncProtocol.Current`; 2 since subjects were added in Nerdy 0.1.1). The server answers an
+older format with 426 `update_required` and applies nothing, and the app then looks for an update straight away; its
+unsynced edits wait on the PC. The app likewise ignores a response in an older format than its own. A change to the
+format also needs the same change to rows already stored: an EF migration on the server and a `LocalSchema` upgrade in
+the app (`src/Nerdy.Core/Storage`), both keeping row versions so nothing has to be downloaded again.
 
 Server, in one transaction:
 1. Increment the user's `UserSyncState.Version` once (optimistic concurrency; retry on conflict) → `v`.
@@ -118,7 +125,7 @@ Health: `GET /health` (anonymous).
 ```
 App.xaml(.cs)            Generic Host, DI, startup (crash recovery, sign-in, onboarding routing)
 MainWindow.xaml          Custom title bar (back, search Ctrl+K), Mica, hosts ShellPage / AuthPage / FocusPages
-Views/                   One page per prototype screen (Home A/B, Calendar, Schedule, Reminders, Topics, Notes,
+Views/                   One page per prototype screen (Home A/B, Calendar, Schedule, Reminders, Subjects, Notes,
                          Focus, FocusActive, UltraFocus, Stats, Settings, Classes, Onboarding, Auth)
 ViewModels/              CommunityToolkit.Mvvm view models
 Controls/                Reusable visuals (timer ring, calendar grids, heatmap, stacked bars, toggle chips…)

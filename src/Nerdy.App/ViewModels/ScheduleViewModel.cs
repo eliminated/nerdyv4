@@ -92,6 +92,7 @@ public sealed partial class ScheduleViewModel : ObservableObject, INavigationAwa
     private readonly Dictionary<DateOnly, SessionOverride> _overrides = [];
     private readonly HashSet<DayOfWeek> _days = [];
     private IReadOnlyList<PlannedSession> _plan = [];
+    private Guid? _subjectId;
     private Guid? _topicId;
     private ScheduleScope _scope = ScheduleScope.Week;
     private int _offset; // weeks (or months) ahead of now
@@ -121,7 +122,10 @@ public sealed partial class ScheduleViewModel : ObservableObject, INavigationAwa
 
     public IReadOnlyList<Option<TimeOnly>> StartOptions { get; }
 
+    public ObservableCollection<ChoiceItem> SubjectChips { get; } = [];
+    /// <summary>The picked subject's topics (optional).</summary>
     public ObservableCollection<ChoiceItem> TopicChips { get; } = [];
+    [ObservableProperty] public partial bool HasTopicChips { get; private set; }
     public ObservableCollection<ChoiceItem> ScopeSegments { get; } = [];
     public ObservableCollection<ChoiceItem> DayChips { get; } = [];
     public ObservableCollection<ChoiceItem> DurationChips { get; } = [];
@@ -169,7 +173,11 @@ public sealed partial class ScheduleViewModel : ObservableObject, INavigationAwa
 
     public void OnNavigatedTo(object? parameter)
     {
-        if (parameter is Guid topicId) _topicId = topicId;
+        switch (parameter)
+        {
+            case Guid subjectId: (_subjectId, _topicId) = (subjectId, null); Title = SuggestedTitle(); break;
+            case StudyLink link: (_subjectId, _topicId) = (link.SubjectId, link.TopicId); Title = SuggestedTitle(); break;
+        }
         _theme.Changed += OnThemeChanged;
         _data.Changed += OnDataChanged;
         _active = true;
@@ -244,15 +252,16 @@ public sealed partial class ScheduleViewModel : ObservableObject, INavigationAwa
         if (ready.Count == 0) return;
         var skipped = _plan.Count - ready.Count;
         var series = Guid.NewGuid();
-        var topic = _data.Topic(_topicId);
+        var subtitle = _data.Subject(_subjectId) is null ? null : _agenda.LinkLabel(_subjectId, _topicId);
         var title = string.IsNullOrWhiteSpace(Title) ? "Study block" : Title.Trim();
         _data.SaveMany(ready.Select(p => new CalendarEventDto
         {
             Id = Guid.NewGuid(),
             UpdatedAt = DateTimeOffset.UtcNow,
             Title = title,
-            Subtitle = topic?.Name,
-            TopicId = _topicId,
+            Subtitle = subtitle,
+            SubjectId = _subjectId,
+            TopicId = _subjectId is null ? null : _topicId,
             StartsAt = new DateTimeOffset(p.StartDateTime),
             EndsAt = new DateTimeOffset(p.EndDateTime),
             ReminderMinutes = Reminder.Value,
@@ -273,7 +282,7 @@ public sealed partial class ScheduleViewModel : ObservableObject, INavigationAwa
 
     private void OnDataChanged(object? sender, DataChangedEventArgs e)
     {
-        if (e.FromSync && e.Affects(DataKinds.Events | DataKinds.Topics)) { BuildStatic(); Replan(); }
+        if (e.FromSync && e.Affects(DataKinds.Events | DataKinds.Subjects | DataKinds.Topics)) { BuildStatic(); Replan(); }
     }
 
     private void ResetAndReplan(bool rebuildDays = false)
@@ -285,9 +294,11 @@ public sealed partial class ScheduleViewModel : ObservableObject, INavigationAwa
 
     private void BuildStatic()
     {
-        TopicChips.Clear();
-        foreach (var t in _data.Topics)
-            TopicChips.Add(new ChoiceItem(_theme, ChoiceLook.ColorChip, t.Name, t.Id, PickTopic, colorHex: t.ColorHex, selected: t.Id == _topicId));
+        SubjectChips.Clear();
+        foreach (var subject in _data.Subjects)
+            SubjectChips.Add(new ChoiceItem(_theme, ChoiceLook.ColorChip, subject.Name, subject.Id, PickSubject, colorHex: subject.ColorHex,
+                selected: subject.Id == _subjectId));
+        RebuildTopicChips();
 
         ScopeSegments.Clear();
         foreach (var (scope, label, icon) in new[] { (ScheduleScope.Once, "One session", Symbol.CalendarDay), (ScheduleScope.Week, "Whole week", Symbol.CalendarWeekNumbers), (ScheduleScope.Month, "Whole month", Symbol.CalendarMonth) })
@@ -344,16 +355,41 @@ public sealed partial class ScheduleViewModel : ObservableObject, INavigationAwa
         return _scope == ScheduleScope.Month ? new DateOnly(today.Year, today.Month, 1).AddMonths(_offset) : today.AddDays(7 * _offset);
     }
 
+    private void PickSubject(ChoiceItem item)
+    {
+        var id = (Guid)item.Value!;
+        var suggested = SuggestedTitle();
+        _subjectId = _subjectId == id ? null : id;
+        _topicId = null;
+        foreach (var c in SubjectChips) c.IsSelected = (Guid)c.Value! == _subjectId;
+        RebuildTopicChips();
+        // Keep a title the user typed; replace one we suggested.
+        if (Title == suggested) Title = SuggestedTitle();
+    }
+
     private void PickTopic(ChoiceItem item)
     {
         var id = (Guid)item.Value!;
-        var previous = _data.Topic(_topicId)?.Name;
+        var suggested = SuggestedTitle();
         _topicId = _topicId == id ? null : id;
         foreach (var c in TopicChips) c.IsSelected = (Guid)c.Value! == _topicId;
-        // Keep a title the user typed; replace one we suggested.
-        if (Title == "Study block" || (previous is not null && Title == $"{previous} study block"))
-            Title = _data.Topic(_topicId) is { } t ? $"{t.Name} study block" : "Study block";
+        if (Title == suggested) Title = SuggestedTitle();
     }
+
+    private void RebuildTopicChips()
+    {
+        TopicChips.Clear();
+        if (_data.Subject(_subjectId) is { } subject)
+            foreach (var t in _data.TopicsOf(subject.Id))
+                TopicChips.Add(new ChoiceItem(_theme, ChoiceLook.Chip, t.Name, t.Id, PickTopic, selected: t.Id == _topicId));
+        HasTopicChips = TopicChips.Count > 0;
+    }
+
+    /// <summary>"Cell biology study block", "Biology study block", or "Study block".</summary>
+    private string SuggestedTitle() =>
+        _data.Topic(_topicId) is { } t && t.SubjectId == _subjectId ? $"{t.Name} study block"
+        : _data.Subject(_subjectId) is { } s ? $"{s.Name} study block"
+        : "Study block";
 
     private void PickScope(ChoiceItem item)
     {
@@ -497,7 +533,7 @@ public sealed partial class ScheduleViewModel : ObservableObject, INavigationAwa
             var blocks = new List<PreviewBlock>();
             foreach (var item in _agenda.On(date).Where(x => !x.IsAllDay))
             {
-                var color = ColorMix.Parse(item.ColorHex ?? _agenda.TopicColor(item.TopicId));
+                var color = ColorMix.Parse(item.ColorHex ?? _agenda.SubjectColor(item.SubjectId));
                 blocks.Add(new PreviewBlock(item.StartHour, item.EndHour, "", ColorMix.Brush(_theme.Tint(color, 30)), _theme.Brush("NerdyTransparentBrush"), _theme.Brush("NerdyTextPrimaryBrush"), false));
             }
             foreach (var p in _plan.Where(p => p.Status != PlanStatus.Skipped && p.Date == date))

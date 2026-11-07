@@ -13,7 +13,7 @@ using Nerdy.App.Services.Data;
 using Nerdy.App.Services.Theming;
 using Nerdy.App.ViewModels.Common;
 using Nerdy.Contracts;
-using Nerdy.Core.Topics;
+using Nerdy.Core.Subjects;
 
 namespace Nerdy.App.ViewModels;
 
@@ -171,19 +171,19 @@ public sealed partial class OnboardingViewModel : ObservableObject, INavigationA
         IsSaving = true;
         try
         {
-            // Topics for the chosen subjects (skipping ones that already exist, e.g. synced from another device).
-            var existing = _data.Topics.Select(t => t.Name).ToHashSet(StringComparer.CurrentCultureIgnoreCase);
-            var used = _data.Topics.Select(t => t.ColorHex).ToList();
-            var order = _data.Topics.Count;
-            var topics = new List<TopicDto>();
+            // The chosen subjects (skipping ones that already exist, e.g. synced from another device).
+            var existing = _data.Subjects.Select(s => s.Name).ToHashSet(StringComparer.CurrentCultureIgnoreCase);
+            var used = _data.Subjects.Select(s => s.ColorHex).ToList();
+            var order = _data.Subjects.Count;
+            var subjects = new List<SubjectDto>();
             foreach (var name in _pickedSubjects.Where(n => !existing.Contains(n)))
             {
-                var suggested = TopicPalette.ForSubject(name);
-                var color = used.Contains(suggested, StringComparer.OrdinalIgnoreCase) ? TopicPalette.Next(used) : suggested;
+                var suggested = SubjectPalette.ForSubject(name);
+                var color = used.Contains(suggested, StringComparer.OrdinalIgnoreCase) ? SubjectPalette.Next(used) : suggested;
                 used.Add(color);
-                topics.Add(new TopicDto { Id = Guid.NewGuid(), UpdatedAt = DateTimeOffset.UtcNow, Name = name, ColorHex = color, SortOrder = order++ });
+                subjects.Add(new SubjectDto { Id = Guid.NewGuid(), UpdatedAt = DateTimeOffset.UtcNow, Name = name, ColorHex = color, SortOrder = order++ });
             }
-            _data.SaveMany(topics);
+            _data.SaveMany(subjects);
 
             // Teachers get Classes near the top of the sidebar.
             _preferences.Update(p =>

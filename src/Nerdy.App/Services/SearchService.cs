@@ -25,13 +25,18 @@ public sealed class SearchService(DataService data, IClock clock)
             if (score > 0) results.Add(new SearchResult(title, subtitle, icon, section, parameter, score));
         }
 
-        foreach (var t in data.Topics)
+        foreach (var subject in data.Subjects)
         {
-            Add(t.Name, "Topic", Symbol.Library, NavSections.Topics, t.Id);
-            foreach (var s in data.SubtopicsOf(t.Id)) Add(s.Name, $"Subtopic · {t.Name}", Symbol.TextBulletList, NavSections.Topics, t.Id);
+            Add(subject.Name, "Subject", Symbol.Library, NavSections.Subjects, subject.Id);
+            foreach (var topic in data.TopicsOf(subject.Id))
+            {
+                var link = new ViewModels.StudyLink(subject.Id, topic.Id);
+                Add(topic.Name, $"Topic · {subject.Name}", Symbol.Folder, NavSections.Subjects, link);
+                foreach (var s in data.SubtopicsOf(topic.Id)) Add(s.Name, $"Subtopic · {subject.Name} · {topic.Name}", Symbol.TextBulletList, NavSections.Subjects, link);
+            }
         }
         foreach (var n in data.Notes)
-            Add(n.Title.Length > 0 ? n.Title : "Untitled note", $"Note · {data.Topic(n.TopicId)?.Name ?? "General"}", Symbol.Notepad, NavSections.Notes, n.Id, n.BodyText);
+            Add(n.Title.Length > 0 ? n.Title : "Untitled note", $"Note · {data.Subject(n.SubjectId)?.Name ?? AgendaService.NoSubjectName}", Symbol.Notepad, NavSections.Notes, n.Id, n.BodyText);
         foreach (var r in data.Reminders)
             Add(r.Title, r.DueAt is { } due ? $"Reminder · {Fmt.Due(due.LocalDateTime, r.HasDueTime, today)}" : "Reminder", Symbol.Alert, NavSections.Reminders, r.Id, r.Notes);
         foreach (var e in data.Events.Where(e => e.RepeatDays != 0 || DateOnly.FromDateTime(e.StartsAt.LocalDateTime) >= today.AddDays(-7)))

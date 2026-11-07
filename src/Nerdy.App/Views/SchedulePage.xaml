@@ -103,8 +103,21 @@
                             <TextBox Header="Title" Style="{StaticResource NerdyTextBoxStyle}" Text="{x:Bind ViewModel.Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                             <StackPanel Spacing="8">
-                                <TextBlock Text="Topic" Style="{StaticResource NerdySectionLabelStyle}" />
-                                <ItemsControl ItemsSource="{x:Bind ViewModel.TopicChips}" ItemTemplate="{StaticResource NerdyColorChipTemplate}" IsTabStop="False">
+                                <TextBlock Text="Subject" Style="{StaticResource NerdySectionLabelStyle}" />
+                                <ItemsControl ItemsSource="{x:Bind ViewModel.SubjectChips}" ItemTemplate="{StaticResource NerdyColorChipTemplate}" IsTabStop="False"
+                                              AutomationProperties.Name="Subject">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <tk:WrapPanel />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <StackPanel Spacing="8" Visibility="{x:Bind ViewModel.HasTopicChips, Mode=OneWay}">
+                                <TextBlock Text="Topic (optional)" Style="{StaticResource NerdySectionLabelStyle}" />
+                                <ItemsControl ItemsSource="{x:Bind ViewModel.TopicChips}" ItemTemplate="{StaticResource NerdyPillChipTemplate}" IsTabStop="False"
+                                              AutomationProperties.Name="Topic">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
                                             <tk:WrapPanel />

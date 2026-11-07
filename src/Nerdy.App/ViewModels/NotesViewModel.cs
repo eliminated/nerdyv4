@@ -75,19 +75,24 @@ public sealed partial class NotesViewModel : ObservableObject, INavigationAware
 
     public ObservableCollection<NoteListItemViewModel> Notes { get; } = [];
     public ObservableCollection<ChecklistItemViewModel> Checklist { get; } = [];
+    public ObservableCollection<Option<Guid?>> SubjectOptions { get; } = [];
     public ObservableCollection<Option<Guid?>> TopicOptions { get; } = [];
     public ObservableCollection<Option<Guid?>> SubtopicOptions { get; } = [];
-    public ObservableCollection<Option<Guid?>> FilterOptions { get; } = [];
+    /// <summary>"All subjects", then each subject followed by its topics. A null value shows every note.</summary>
+    public ObservableCollection<Option<StudyLink?>> FilterOptions { get; } = [];
 
     [ObservableProperty] public partial string Search { get; set; } = "";
-    [ObservableProperty] public partial Option<Guid?>? Filter { get; set; }
+    [ObservableProperty] public partial Option<StudyLink?>? Filter { get; set; }
     [ObservableProperty] public partial bool HasNote { get; private set; }
     [ObservableProperty] public partial bool HasNotes { get; private set; }
     [ObservableProperty] public partial string Title { get; set; } = "";
+    [ObservableProperty] public partial Option<Guid?>? Subject { get; set; }
     [ObservableProperty] public partial Option<Guid?>? Topic { get; set; }
     [ObservableProperty] public partial Option<Guid?>? Subtopic { get; set; }
+    [ObservableProperty] public partial bool HasTopicOptions { get; private set; }
+    [ObservableProperty] public partial bool HasSubtopicOptions { get; private set; }
     [ObservableProperty] public partial string EditedText { get; private set; } = "";
-    [ObservableProperty] public partial Brush? TopicDot { get; private set; }
+    [ObservableProperty] public partial Brush? SubjectDot { get; private set; }
     [ObservableProperty] public partial string NewChecklistItem { get; set; } = "";
 
     /// <summary>Raised when another note is opened; the page loads <see cref="CurrentBodyRtf"/> into the editor.</summary>
@@ -105,8 +110,10 @@ public sealed partial class NotesViewModel : ObservableObject, INavigationAware
         switch (parameter)
         {
             case NotesTarget target:
-                Filter = FilterOptions.FirstOrDefault(f => f.Value == target.TopicId) ?? FilterOptions[0];
-                if (target.CreateNew) NewNote(target.TopicId, target.SubtopicId);
+                Filter = FilterOptions.FirstOrDefault(f => f.Value?.SubjectId == target.SubjectId && f.Value?.TopicId == target.TopicId)
+                    ?? FilterOptions.FirstOrDefault(f => f.Value?.SubjectId == target.SubjectId && f.Value?.TopicId is null)
+                    ?? FilterOptions[0];
+                if (target.CreateNew) NewNote(target.SubjectId, target.TopicId, target.SubtopicId);
                 else RefreshList(selectFirst: true);
                 break;
             case Guid noteId when _data.Note(noteId) is { } note:
@@ -128,22 +135,30 @@ public sealed partial class NotesViewModel : ObservableObject, INavigationAware
     }
 
     partial void OnSearchChanged(string value) => RefreshList(selectFirst: false);
-    partial void OnFilterChanged(Option<Guid?>? value) => RefreshList(selectFirst: false);
+    partial void OnFilterChanged(Option<StudyLink?>? value) => RefreshList(selectFirst: false);
 
     partial void OnTitleChanged(string value) => MarkDirty();
+
+    partial void OnSubjectChanged(Option<Guid?>? value)
+    {
+        if (_loading) return;
+        BuildTopicOptions(value?.Value, null);
+        BuildSubtopicOptions(null, null);
+        UpdateSubjectDot();
+        MarkDirty();
+    }
 
     partial void OnTopicChanged(Option<Guid?>? value)
     {
         if (_loading) return;
         BuildSubtopicOptions(value?.Value, null);
-        UpdateTopicDot();
         MarkDirty();
     }
 
     partial void OnSubtopicChanged(Option<Guid?>? value) => MarkDirty();
 
     [RelayCommand]
-    private void New() => NewNote(Filter?.Value, null);
+    private void New() => NewNote(Filter?.Value?.SubjectId, Filter?.Value?.TopicId, null);
 
     [RelayCommand]
     private async Task DeleteAsync()
@@ -161,6 +176,7 @@ public sealed partial class NotesViewModel : ObservableObject, INavigationAware
     {
         SaveNow();
         _focus.DraftTask = Title.Trim().Length == 0 ? "Study notes" : Title.Trim();
+        _focus.DraftSubjectId = Subject?.Value;
         _focus.DraftTopicId = Topic?.Value;
         _navigation.Navigate(NavSections.Focus);
     }
@@ -185,10 +201,14 @@ public sealed partial class NotesViewModel : ObservableObject, INavigationAware
         MarkDirty();
     }
 
-    private void NewNote(Guid? topicId, Guid? subtopicId)
+    private void NewNote(Guid? subjectId, Guid? topicId, Guid? subtopicId)
     {
         SaveNow();
-        var note = _data.Save(new NoteDto { Id = Guid.NewGuid(), UpdatedAt = DateTimeOffset.UtcNow, TopicId = topicId, SubtopicId = subtopicId });
+        var note = _data.Save(new NoteDto
+        {
+            Id = Guid.NewGuid(), UpdatedAt = DateTimeOffset.UtcNow, SubjectId = subjectId,
+            TopicId = subjectId is null ? null : topicId, SubtopicId = subjectId is null || topicId is null ? null : subtopicId,
+        });
         Search = "";
         RefreshList(selectFirst: false);
         Open(note);
@@ -201,13 +221,14 @@ public sealed partial class NotesViewModel : ObservableObject, INavigationAware
         _current = note;
         _bodyDirty = false;
         Title = note.Title;
-        BuildTopicOptions();
-        Topic = TopicOptions.FirstOrDefault(t => t.Value == note.TopicId) ?? TopicOptions[0];
-        BuildSubtopicOptions(note.TopicId, note.SubtopicId);
+        BuildSubjectOptions();
+        Subject = SubjectOptions.FirstOrDefault(s => s.Value == note.SubjectId) ?? SubjectOptions[0];
+        BuildTopicOptions(Subject.Value, note.TopicId);
+        BuildSubtopicOptions(Topic?.Value, note.SubtopicId);
         Checklist.Clear();
         foreach (var c in note.Checklist) Checklist.Add(new ChecklistItemViewModel(c.Text, c.Done, MarkDirty, RemoveChecklistItem));
         HasNote = true;
-        UpdateTopicDot();
+        UpdateSubjectDot();
         UpdateEdited();
         _loading = false;
         NoteOpened?.Invoke(this, EventArgs.Empty);
@@ -234,13 +255,14 @@ public sealed partial class NotesViewModel : ObservableObject, INavigationAware
         var updated = note with
         {
             Title = Title.Trim(),
+            SubjectId = Subject?.Value,
             TopicId = Topic?.Value,
             SubtopicId = Subtopic?.Value,
             BodyRtf = _bodyDirty ? _pendingRtf : note.BodyRtf,
             BodyText = _bodyDirty ? _pendingText.TrimEnd() : note.BodyText,
             Checklist = Checklist.Select(c => new ChecklistItemDto { Text = c.Text, Done = c.Done }).ToList()
         };
-        if (updated.Title == note.Title && updated.TopicId == note.TopicId && updated.SubtopicId == note.SubtopicId &&
+        if (updated.Title == note.Title && updated.SubjectId == note.SubjectId && updated.TopicId == note.TopicId && updated.SubtopicId == note.SubtopicId &&
             updated.BodyRtf == note.BodyRtf && updated.BodyText == note.BodyText && updated.Checklist.SequenceEqual(note.Checklist))
             return;
         _current = _data.Save(updated);
@@ -259,7 +281,7 @@ public sealed partial class NotesViewModel : ObservableObject, INavigationAware
 
     private void OnDataChanged(object? sender, DataChangedEventArgs e)
     {
-        if (!e.Affects(DataKinds.Notes | DataKinds.Topics | DataKinds.Subtopics)) return;
+        if (!e.Affects(DataKinds.Notes | DataKinds.Study)) return;
         if (e.FromSync && _current is { } current && _data.Note(current.Id) is { } fresh && fresh.UpdatedAt != current.UpdatedAt && !_bodyDirty)
             Open(fresh); // edited on another device and not being edited here
         else if (e.FromSync && _current is { } gone && _data.Note(gone.Id) is null)
@@ -268,22 +290,22 @@ public sealed partial class NotesViewModel : ObservableObject, INavigationAware
             RefreshList(selectFirst: true);
             return;
         }
-        if (e.Affects(DataKinds.Topics)) BuildFilters();
+        if (e.Affects(DataKinds.Subjects | DataKinds.Topics)) BuildFilters();
         RefreshList(selectFirst: false);
     }
 
     private void OnThemeChanged(object? sender, EventArgs e)
     {
-        UpdateTopicDot();
+        UpdateSubjectDot();
         RefreshList(selectFirst: false);
     }
 
     private void RefreshList(bool selectFirst)
     {
         var q = Search.Trim();
-        var topic = Filter?.Value;
+        var filter = Filter?.Value;
         var notes = _data.Notes
-            .Where(n => topic is null || n.TopicId == topic)
+            .Where(n => filter is null || (n.SubjectId == filter.SubjectId && (filter.TopicId is null || n.TopicId == filter.TopicId)))
             .Where(n => q.Length == 0 || n.Title.Contains(q, StringComparison.CurrentCultureIgnoreCase) || n.BodyText.Contains(q, StringComparison.CurrentCultureIgnoreCase))
             .OrderByDescending(n => n.UpdatedAt)
             .ToList();
@@ -292,9 +314,9 @@ public sealed partial class NotesViewModel : ObservableObject, INavigationAware
         var now = _clock.LocalNow;
         foreach (var n in notes)
         {
-            var where = _data.Subtopic(n.SubtopicId)?.Name ?? _data.Topic(n.TopicId)?.Name ?? "General";
+            var where = _data.Subtopic(n.SubtopicId)?.Name ?? _data.Topic(n.TopicId)?.Name ?? _data.Subject(n.SubjectId)?.Name ?? AgendaService.NoSubjectName;
             Notes.Add(new NoteListItemViewModel(n, $"{where} · {Fmt.Ago(n.UpdatedAt.LocalDateTime, now)}",
-                ColorMix.Brush(_data.Topic(n.TopicId)?.ColorHex ?? "#64748B"),
+                ColorMix.Brush(_data.Subject(n.SubjectId)?.ColorHex ?? AgendaService.NoSubjectColor),
                 _theme.Brush(n.Id == _current?.Id ? "NerdyCardBackgroundBrush" : "NerdyTransparentBrush"),
                 id => { if (_data.Note(id) is { } note) Open(note); }));
         }
@@ -311,16 +333,32 @@ public sealed partial class NotesViewModel : ObservableObject, INavigationAware
     {
         var selected = Filter?.Value;
         FilterOptions.Clear();
-        FilterOptions.Add(new Option<Guid?>("All topics", null));
-        foreach (var t in _data.Topics) FilterOptions.Add(new Option<Guid?>(t.Name, t.Id));
+        FilterOptions.Add(new Option<StudyLink?>("All subjects", null));
+        foreach (var subject in _data.Subjects)
+        {
+            FilterOptions.Add(new Option<StudyLink?>(subject.Name, new StudyLink(subject.Id)));
+            foreach (var t in _data.TopicsOf(subject.Id)) FilterOptions.Add(new Option<StudyLink?>($"{subject.Name} › {t.Name}", new StudyLink(subject.Id, t.Id)));
+        }
         Filter = FilterOptions.FirstOrDefault(f => f.Value == selected) ?? FilterOptions[0];
     }
 
-    private void BuildTopicOptions()
+    private void BuildSubjectOptions()
     {
+        SubjectOptions.Clear();
+        SubjectOptions.Add(new Option<Guid?>(AgendaService.NoSubjectName, null));
+        foreach (var s in _data.Subjects) SubjectOptions.Add(new Option<Guid?>(s.Name, s.Id));
+    }
+
+    private void BuildTopicOptions(Guid? subjectId, Guid? selected)
+    {
+        var wasLoading = _loading;
+        _loading = true;
         TopicOptions.Clear();
-        TopicOptions.Add(new Option<Guid?>("General", null));
-        foreach (var t in _data.Topics) TopicOptions.Add(new Option<Guid?>(t.Name, t.Id));
+        TopicOptions.Add(new Option<Guid?>("No topic", null));
+        if (subjectId is { } id) foreach (var t in _data.TopicsOf(id)) TopicOptions.Add(new Option<Guid?>(t.Name, t.Id));
+        Topic = TopicOptions.FirstOrDefault(t => t.Value == selected) ?? TopicOptions[0];
+        HasTopicOptions = TopicOptions.Count > 1;
+        _loading = wasLoading;
     }
 
     private void BuildSubtopicOptions(Guid? topicId, Guid? selected)
@@ -331,10 +369,11 @@ public sealed partial class NotesViewModel : ObservableObject, INavigationAware
         SubtopicOptions.Add(new Option<Guid?>("No subtopic", null));
         if (topicId is { } id) foreach (var s in _data.SubtopicsOf(id)) SubtopicOptions.Add(new Option<Guid?>(s.Name, s.Id));
         Subtopic = SubtopicOptions.FirstOrDefault(s => s.Value == selected) ?? SubtopicOptions[0];
+        HasSubtopicOptions = SubtopicOptions.Count > 1;
         _loading = wasLoading;
     }
 
-    private void UpdateTopicDot() => TopicDot = ColorMix.Brush(_data.Topic(Topic?.Value)?.ColorHex ?? "#64748B");
+    private void UpdateSubjectDot() => SubjectDot = ColorMix.Brush(_data.Subject(Subject?.Value)?.ColorHex ?? AgendaService.NoSubjectColor);
 
     private void UpdateEdited() => EditedText = _current is null ? "" : $"Edited {Fmt.Ago(_current.UpdatedAt.LocalDateTime, _clock.LocalNow)}";
 }

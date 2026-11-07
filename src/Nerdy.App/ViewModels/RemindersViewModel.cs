@@ -95,7 +95,7 @@ public sealed partial class RemindersViewModel : ObservableObject, INavigationAw
 
     private void OnDataChanged(object? sender, DataChangedEventArgs e)
     {
-        if (e.Affects(DataKinds.Reminders | DataKinds.Topics)) Refresh();
+        if (e.Affects(DataKinds.Reminders | DataKinds.Subjects | DataKinds.Topics)) Refresh();
     }
 
     private void OnClassesChanged(object? sender, EventArgs e) => Refresh();
@@ -158,10 +158,9 @@ public sealed partial class ReminderEditorViewModel : ObservableObject
         _clock = clock;
         _original = reminder;
         _morningHour = morningHour;
-        Topics = [new Option<Guid?>("No topic", null), .. data.Topics.Select(t => new Option<Guid?>(t.Name, t.Id))];
+        Link = new StudyPicker(data, reminder.SubjectId, reminder.TopicId);
         Title = reminder.Title;
         Notes = reminder.Notes ?? "";
-        Topic = Topics.FirstOrDefault(t => t.Value == reminder.TopicId) ?? Topics[0];
         HasDate = reminder.DueAt is not null;
         var due = reminder.DueAt?.LocalDateTime ?? DateTime.Today;
         Date = new DateTimeOffset(due.Date);
@@ -185,12 +184,11 @@ public sealed partial class ReminderEditorViewModel : ObservableObject
         UpdateDueText();
     }
 
-    public IReadOnlyList<Option<Guid?>> Topics { get; }
+    public StudyPicker Link { get; }
     public ObservableCollection<ChoiceItem> DueChips { get; } = [];
 
     [ObservableProperty, NotifyPropertyChangedFor(nameof(CanSave))] public partial string Title { get; set; }
     [ObservableProperty] public partial string Notes { get; set; }
-    [ObservableProperty] public partial Option<Guid?> Topic { get; set; }
     [ObservableProperty] public partial bool HasDate { get; set; }
     [ObservableProperty] public partial DateTimeOffset? Date { get; set; }
     [ObservableProperty] public partial bool HasTime { get; set; }
@@ -237,7 +235,8 @@ public sealed partial class ReminderEditorViewModel : ObservableObject
         {
             Title = Title.Trim(),
             Notes = string.IsNullOrWhiteSpace(Notes) ? null : Notes.Trim(),
-            TopicId = Topic.Value,
+            SubjectId = Link.SubjectId,
+            TopicId = Link.TopicId,
             DueAt = due,
             HasDueTime = due is not null && HasTime,
             IsStarred = IsStarred

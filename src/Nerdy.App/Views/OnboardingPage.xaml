@@ -71,7 +71,7 @@
                 <!-- Step 2: subjects -->
                 <StackPanel Visibility="{x:Bind ViewModel.IsSubjects, Mode=OneWay}">
                     <TextBlock Text="What are you studying?" FontSize="26" FontWeight="SemiBold" Style="{StaticResource NerdyTextBase}" />
-                    <TextBlock Text="Each one becomes a topic. Add subtopics anytime." Margin="0,2,0,20" Style="{StaticResource NerdySecondaryStyle}" />
+                    <TextBlock Text="Each one becomes a subject. Add its topics and subtopics anytime." Margin="0,2,0,20" Style="{StaticResource NerdySecondaryStyle}" />
                     <ItemsControl ItemsSource="{x:Bind ViewModel.SubjectChips}" ItemTemplate="{StaticResource NerdyPillChipTemplate}" IsTabStop="False" Margin="0,0,0,8">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>

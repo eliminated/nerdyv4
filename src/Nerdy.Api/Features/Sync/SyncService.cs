@@ -19,6 +19,7 @@ public sealed class SyncService(NerdyDbContext db, TimeProvider time, ILogger<Sy
     /// <summary>Keeps IN (...) lists well below SQL Server's 2,100-parameter limit.</summary>
     private const int LookupBatchSize = 500;
 
+    private static readonly SyncedType<Subject, SubjectDto> Subjects = new(db => db.Subjects, SyncMappings.Apply, SyncMappings.ToDto);
     private static readonly SyncedType<Topic, TopicDto> Topics = new(db => db.Topics, SyncMappings.Apply, SyncMappings.ToDto);
     private static readonly SyncedType<Subtopic, SubtopicDto> Subtopics = new(db => db.Subtopics, SyncMappings.Apply, SyncMappings.ToDto);
     private static readonly SyncedType<CalendarEvent, CalendarEventDto> Events = new(db => db.CalendarEvents, SyncMappings.Apply, SyncMappings.ToDto);
@@ -70,6 +71,7 @@ public sealed class SyncService(NerdyDbContext db, TimeProvider time, ILogger<Sy
         // 2. Merge.
         var changes = request.Changes;
         var context = new MergeContext(db, userId, version, cancellationToken);
+        var rejectedSubjects = await context.MergeAsync(Subjects, changes.Subjects);
         var rejectedTopics = await context.MergeAsync(Topics, changes.Topics);
         var rejectedSubtopics = await context.MergeAsync(Subtopics, changes.Subtopics);
         var rejectedEvents = await context.MergeAsync(Events, changes.Events);
@@ -82,10 +84,12 @@ public sealed class SyncService(NerdyDbContext db, TimeProvider time, ILogger<Sy
         // 3. Pull.
         var response = new SyncResponse
         {
+            Protocol = SyncProtocol.Current,
             Version = version,
             ServerTime = time.GetUtcNow(),
             Changes = new SyncChanges
             {
+                Subjects = await context.PullAsync(Subjects, since, rejectedSubjects),
                 Topics = await context.PullAsync(Topics, since, rejectedTopics),
                 Subtopics = await context.PullAsync(Subtopics, since, rejectedSubtopics),
                 Events = await context.PullAsync(Events, since, rejectedEvents),

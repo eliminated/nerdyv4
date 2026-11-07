@@ -104,7 +104,7 @@ public sealed partial class ShellViewModel : ObservableObject
     public Brush StatusBrush => _sync.State switch
     {
         SyncState.Offline => _theme.Brush("NerdyTextTertiaryBrush"),
-        SyncState.Error => _theme.Brush("NerdyWarningBrush"),
+        SyncState.Error or SyncState.UpdateRequired => _theme.Brush("NerdyWarningBrush"),
         _ => _theme.Brush("NerdyOnlineBrush")
     };
 
@@ -112,6 +112,7 @@ public sealed partial class ShellViewModel : ObservableObject
     {
         SyncState.Offline => "Offline · changes are saved on this PC",
         SyncState.Error => "Sync needs attention",
+        SyncState.UpdateRequired => "Update Nerdy to keep syncing",
         SyncState.Syncing => "Syncing…",
         _ => _sync.LastSyncedAt is { } t ? $"Synced {t:t}" : "Up to date"
     };

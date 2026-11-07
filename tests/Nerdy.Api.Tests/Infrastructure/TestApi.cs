@@ -48,7 +48,7 @@ public static class TestApi
     public static async Task<T> GetAsync<T>(this HttpClient client, string url) => await (await client.GetAsync(url)).ReadAsync<T>();
 
     public static async Task<SyncResponse> SyncAsync(this HttpClient client, long sinceVersion, SyncChanges? changes = null) =>
-        await (await client.PostAsJsonAsync("/api/sync", new SyncRequest { SinceVersion = sinceVersion, Changes = changes ?? new() }))
+        await (await client.PostAsJsonAsync("/api/sync", new SyncRequest { Protocol = SyncProtocol.Current, SinceVersion = sinceVersion, Changes = changes ?? new() }))
             .ReadAsync<SyncResponse>();
 
     /// <summary>Asserts the status and that the body is a problem document, returning its <c>code</c> extension (or null).</summary>

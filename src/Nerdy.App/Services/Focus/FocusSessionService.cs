@@ -24,7 +24,7 @@ public sealed partial class PlanItem(string text) : ObservableObject
 }
 
 /// <summary>
-/// Runs focus sessions: the shared draft (mode, duration, task, topic) used by Home and the Focus page, the timer,
+/// Runs focus sessions: the shared draft (mode, duration, task, subject and topic) used by Home and the Focus page, the timer,
 /// app blocking through <see cref="FocusGuard"/>, Ultra-Focus window behaviour, and logging the outcome to history.
 /// A small "active session" record is kept in the local store so a session cut short by a crash or by Task Manager
 /// is recorded as <see cref="FocusOutcome.Interrupted"/> on the next launch.
@@ -73,6 +73,8 @@ public sealed partial class FocusSessionService : ObservableObject
     [ObservableProperty] public partial FocusMode DraftMode { get; set; } = FocusMode.Focus;
     [ObservableProperty] public partial int DraftSeconds { get; set; }
     [ObservableProperty] public partial string DraftTask { get; set; } = "";
+    [ObservableProperty] public partial Guid? DraftSubjectId { get; set; }
+    /// <summary>Optional, narrows <see cref="DraftSubjectId"/>.</summary>
     [ObservableProperty] public partial Guid? DraftTopicId { get; set; }
 
     // ----- Active session -----
@@ -80,6 +82,7 @@ public sealed partial class FocusSessionService : ObservableObject
     [ObservableProperty] public partial bool IsPaused { get; private set; }
     [ObservableProperty] public partial FocusMode Mode { get; private set; }
     [ObservableProperty] public partial string TaskTitle { get; private set; } = "";
+    [ObservableProperty] public partial Guid? SubjectId { get; private set; }
     [ObservableProperty] public partial Guid? TopicId { get; private set; }
     [ObservableProperty] public partial int TotalSeconds { get; private set; }
     [ObservableProperty] public partial int RemainingSeconds { get; private set; }
@@ -113,7 +116,8 @@ public sealed partial class FocusSessionService : ObservableObject
         _sessionId = Guid.NewGuid();
         Mode = DraftMode;
         TaskTitle = string.IsNullOrWhiteSpace(DraftTask) ? "Focus session" : DraftTask.Trim();
-        TopicId = DraftTopicId;
+        SubjectId = DraftSubjectId;
+        TopicId = DraftSubjectId is null ? null : DraftTopicId;
         TotalSeconds = Math.Max(60, DraftSeconds);
         RemainingSeconds = TotalSeconds;
         StartedAt = _clock.UtcNow;
@@ -233,6 +237,7 @@ public sealed partial class FocusSessionService : ObservableObject
             {
                 Id = state.Id,
                 UpdatedAt = _clock.UtcNow,
+                SubjectId = state.SubjectId,
                 TopicId = state.TopicId,
                 Task = state.Task,
                 Mode = state.Mode,
@@ -325,6 +330,7 @@ public sealed partial class FocusSessionService : ObservableObject
         {
             Id = _sessionId,
             UpdatedAt = _clock.UtcNow,
+            SubjectId = SubjectId,
             TopicId = TopicId,
             Task = TaskTitle,
             Mode = Mode,
@@ -360,7 +366,7 @@ public sealed partial class FocusSessionService : ObservableObject
     private async Task SaveHeartbeatAsync()
     {
         _lastHeartbeat = _clock.LocalNow;
-        var state = new ActiveState(_sessionId, TaskTitle, TopicId, Mode, TotalSeconds, ElapsedSeconds, StartedAt);
+        var state = new ActiveState(_sessionId, TaskTitle, SubjectId, TopicId, Mode, TotalSeconds, ElapsedSeconds, StartedAt);
         await _data.SetMetaAsync(ActiveKey, JsonSerializer.Serialize(state, DataService.Json));
     }
 
@@ -391,5 +397,5 @@ public sealed partial class FocusSessionService : ObservableObject
         };
     }
 
-    private sealed record ActiveState(Guid Id, string Task, Guid? TopicId, FocusMode Mode, int PlannedSeconds, int ElapsedSeconds, DateTimeOffset StartedAt);
+    private sealed record ActiveState(Guid Id, string Task, Guid? SubjectId, Guid? TopicId, FocusMode Mode, int PlannedSeconds, int ElapsedSeconds, DateTimeOffset StartedAt);
 }

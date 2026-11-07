@@ -12,7 +12,7 @@ public interface IShare
 
 /// <summary>
 /// Lays children out side by side, each as wide as its DataContext's <see cref="IShare.Share"/> of the total
-/// (the stacked "time by topic" bar).
+/// (the stacked "time by subject" bar).
 /// </summary>
 public sealed class ShareBarPanel : Panel
 {

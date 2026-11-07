@@ -13,17 +13,17 @@ public sealed class SyncTests(NerdyApiFactory factory) : IClassFixture<NerdyApiF
     public async Task First_sync_inserts_rows_and_returns_the_new_version()
     {
         var user = await factory.RegisterAsync();
-        var topic = Topic("Biology", T0);
+        var subject = Subject("Biology", T0);
         var note = new NoteDto
         {
-            Id = Guid.NewGuid(), UpdatedAt = T0, Title = "Cells", TopicId = topic.Id, BodyRtf = @"{\rtf1 Cells}", BodyText = "Cells",
+            Id = Guid.NewGuid(), UpdatedAt = T0, Title = "Cells", SubjectId = subject.Id, BodyRtf = @"{\rtf1 Cells}", BodyText = "Cells",
             Checklist = [new ChecklistItemDto { Text = "Mitosis", Done = true }, new ChecklistItemDto { Text = "Meiosis" }],
         };
 
-        var response = await user.Client.SyncAsync(0, new SyncChanges { Topics = [topic], Notes = [note] });
+        var response = await user.Client.SyncAsync(0, new SyncChanges { Subjects = [subject], Notes = [note] });
 
         Assert.Equal(1, response.Version);
-        Assert.Equal(topic, Assert.Single(response.Changes.Topics));
+        Assert.Equal(subject, Assert.Single(response.Changes.Subjects));
         var savedNote = Assert.Single(response.Changes.Notes);
         Assert.Equal(note.Checklist, savedNote.Checklist);
         Assert.Equal(note.BodyRtf, savedNote.BodyRtf);
@@ -69,22 +69,22 @@ public sealed class SyncTests(NerdyApiFactory factory) : IClassFixture<NerdyApiF
     public async Task Last_write_wins_newer_overwrites_and_older_is_rejected_with_the_server_copy()
     {
         var user = await factory.RegisterAsync();
-        var original = Topic("Physics", T0);
-        var v1 = (await user.Client.SyncAsync(0, new SyncChanges { Topics = [original] })).Version;
+        var original = Subject("Physics", T0);
+        var v1 = (await user.Client.SyncAsync(0, new SyncChanges { Subjects = [original] })).Version;
 
         var newer = original with { Name = "Physics II", UpdatedAt = T0.AddMinutes(5) };
-        var afterNewer = await user.Client.SyncAsync(v1, new SyncChanges { Topics = [newer] });
-        Assert.Equal("Physics II", Assert.Single(afterNewer.Changes.Topics).Name);
+        var afterNewer = await user.Client.SyncAsync(v1, new SyncChanges { Subjects = [newer] });
+        Assert.Equal("Physics II", Assert.Single(afterNewer.Changes.Subjects).Name);
 
         // A stale device pushes an edit made before the newer one: the server keeps its copy and sends it back.
         var stale = original with { Name = "Phys", UpdatedAt = T0.AddMinutes(1) };
-        var afterStale = await user.Client.SyncAsync(afterNewer.Version, new SyncChanges { Topics = [stale] });
-        Assert.Equal(newer, Assert.Single(afterStale.Changes.Topics));
+        var afterStale = await user.Client.SyncAsync(afterNewer.Version, new SyncChanges { Subjects = [stale] });
+        Assert.Equal(newer, Assert.Single(afterStale.Changes.Subjects));
 
         // An equal timestamp is applied (ties go to the client), so re-pushing is idempotent.
         var tie = newer with { SortOrder = 3 };
-        var afterTie = await user.Client.SyncAsync(afterStale.Version, new SyncChanges { Topics = [tie] });
-        Assert.Equal(3, Assert.Single(afterTie.Changes.Topics).SortOrder);
+        var afterTie = await user.Client.SyncAsync(afterStale.Version, new SyncChanges { Subjects = [tie] });
+        Assert.Equal(3, Assert.Single(afterTie.Changes.Subjects).SortOrder);
     }
 
     [Fact]
@@ -141,15 +141,15 @@ public sealed class SyncTests(NerdyApiFactory factory) : IClassFixture<NerdyApiF
     {
         var alice = await factory.RegisterAsync();
         var bob = await factory.RegisterAsync();
-        var aliceTopic = Topic("Alice's secret diary", T0);
-        await alice.Client.SyncAsync(0, new SyncChanges { Topics = [aliceTopic] });
+        var aliceSubject = Subject("Alice's secret diary", T0);
+        await alice.Client.SyncAsync(0, new SyncChanges { Subjects = [aliceSubject] });
 
-        var hijack = aliceTopic with { Name = "Bob was here", UpdatedAt = T0.AddDays(1) };
-        var bobResponse = await bob.Client.SyncAsync(0, new SyncChanges { Topics = [hijack] });
-        Assert.Empty(bobResponse.Changes.Topics);
+        var hijack = aliceSubject with { Name = "Bob was here", UpdatedAt = T0.AddDays(1) };
+        var bobResponse = await bob.Client.SyncAsync(0, new SyncChanges { Subjects = [hijack] });
+        Assert.Empty(bobResponse.Changes.Subjects);
 
         var aliceView = await alice.Client.SyncAsync(0);
-        Assert.Equal("Alice's secret diary", Assert.Single(aliceView.Changes.Topics).Name);
+        Assert.Equal("Alice's secret diary", Assert.Single(aliceView.Changes.Subjects).Name);
     }
 
     [Fact]
@@ -158,9 +158,11 @@ public sealed class SyncTests(NerdyApiFactory factory) : IClassFixture<NerdyApiF
         var user = await factory.RegisterAsync();
         var response = await user.Client.PostAsJsonAsync("/api/sync", new SyncRequest
         {
+            Protocol = SyncProtocol.Current,
             Changes = new SyncChanges
             {
-                Topics = [Topic(new string('a', 201), T0) with { ColorHex = "red" }],
+                Subjects = [Subject(new string('a', 201), T0) with { ColorHex = "red" }],
+                Topics = [new TopicDto { Id = Guid.NewGuid(), UpdatedAt = T0, Name = new string('b', 201) }],
                 Subtopics = [new SubtopicDto { Id = Guid.NewGuid(), UpdatedAt = T0, Progress = 101 }],
                 Events = [new CalendarEventDto { Id = Guid.NewGuid(), UpdatedAt = T0, StartsAt = T0, EndsAt = T0.AddHours(-1) }],
                 Notes = [new NoteDto { Id = Guid.NewGuid(), UpdatedAt = T0, Checklist = Enumerable.Repeat(new ChecklistItemDto(), 201).ToList() }],
@@ -169,14 +171,15 @@ public sealed class SyncTests(NerdyApiFactory factory) : IClassFixture<NerdyApiF
         });
 
         var errors = await response.ReadValidationErrorsAsync();
+        Assert.Contains("changes.subjects[0].name", errors);
+        Assert.Contains("changes.subjects[0].colorHex", errors);
         Assert.Contains("changes.topics[0].name", errors);
-        Assert.Contains("changes.topics[0].colorHex", errors);
         Assert.Contains("changes.subtopics[0].progress", errors);
         Assert.Contains("changes.events[0].endsAt", errors);
         Assert.Contains("changes.notes[0].checklist", errors);
         Assert.Contains("changes.preferences.json", errors);
 
-        Assert.Empty((await user.Client.SyncAsync(0)).Changes.Topics);
+        Assert.Empty((await user.Client.SyncAsync(0)).Changes.Subjects);
     }
 
     [Fact]
@@ -184,7 +187,7 @@ public sealed class SyncTests(NerdyApiFactory factory) : IClassFixture<NerdyApiF
     {
         var user = await factory.RegisterAsync();
         var reminders = Enumerable.Range(0, 2001).Select(_ => new ReminderDto { Id = Guid.NewGuid(), UpdatedAt = T0 }).ToList();
-        var response = await user.Client.PostAsJsonAsync("/api/sync", new SyncRequest { Changes = new SyncChanges { Reminders = reminders } });
+        var response = await user.Client.PostAsJsonAsync("/api/sync", new SyncRequest { Protocol = SyncProtocol.Current, Changes = new SyncChanges { Reminders = reminders } });
 
         Assert.Contains("changes.reminders", await response.ReadValidationErrorsAsync());
     }
@@ -215,6 +218,62 @@ public sealed class SyncTests(NerdyApiFactory factory) : IClassFixture<NerdyApiF
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    private static TopicDto Topic(string name, DateTimeOffset updatedAt) =>
+    [Fact]
+    public async Task Subjects_topics_and_subtopics_reach_another_device_with_every_link()
+    {
+        var user = await factory.RegisterAsync();
+        var laptop = user.Client;
+        var desktop = factory.CreateApiClient();
+        desktop.DefaultRequestHeaders.Authorization = laptop.DefaultRequestHeaders.Authorization;
+
+        var subject = Subject("Biology", T0);
+        var topic = new TopicDto { Id = Guid.NewGuid(), UpdatedAt = T0, SubjectId = subject.Id, Name = "Cell biology", SortOrder = 2 };
+        var subtopic = new SubtopicDto { Id = Guid.NewGuid(), UpdatedAt = T0, TopicId = topic.Id, Name = "Mitosis", Progress = 60, SortOrder = 1 };
+        var changes = new SyncChanges
+        {
+            Subjects = [subject],
+            Topics = [topic],
+            Subtopics = [subtopic],
+            Events = [new CalendarEventDto { Id = Guid.NewGuid(), UpdatedAt = T0, Title = "Study", SubjectId = subject.Id, TopicId = topic.Id, StartsAt = T0, EndsAt = T0.AddHours(1) }],
+            Reminders = [new ReminderDto { Id = Guid.NewGuid(), UpdatedAt = T0, Title = "Revise", SubjectId = subject.Id, TopicId = topic.Id }],
+            Notes = [new NoteDto { Id = Guid.NewGuid(), UpdatedAt = T0, Title = "Phases", SubjectId = subject.Id, TopicId = topic.Id, SubtopicId = subtopic.Id }],
+            FocusSessions = [new FocusSessionDto
+            {
+                Id = Guid.NewGuid(), UpdatedAt = T0, SubjectId = subject.Id, TopicId = topic.Id, Task = "Flashcards", Mode = FocusMode.Focus,
+                StartedAt = T0, EndedAt = T0.AddMinutes(25), Outcome = FocusOutcome.Completed,
+            }],
+        };
+        await laptop.SyncAsync(0, changes);
+
+        var pulled = (await desktop.SyncAsync(0)).Changes;
+        Assert.Equal(subject, Assert.Single(pulled.Subjects));
+        Assert.Equal(topic, Assert.Single(pulled.Topics));
+        Assert.Equal(subtopic, Assert.Single(pulled.Subtopics));
+        Assert.Equal(changes.Events, pulled.Events);
+        Assert.Equal(changes.Reminders, pulled.Reminders);
+        Assert.Equal(changes.FocusSessions, pulled.FocusSessions);
+        var note = Assert.Single(pulled.Notes);
+        Assert.Equal((subject.Id, topic.Id, subtopic.Id), (note.SubjectId!.Value, note.TopicId!.Value, note.SubtopicId!.Value));
+    }
+
+    [Fact]
+    public async Task An_app_from_before_subjects_is_told_to_update_and_nothing_it_sent_is_applied()
+    {
+        var user = await factory.RegisterAsync();
+
+        // What Nerdy 0.1.0 sends: no protocol, and its "topics" are what are now subjects.
+        var response = await user.Client.PostAsJsonAsync("/api/sync", new
+        {
+            sinceVersion = 0,
+            changes = new { topics = new[] { new { id = Guid.NewGuid(), updatedAt = T0, name = "Biology", colorHex = "#22AA88" } } },
+        });
+
+        Assert.Equal(ApiErrorCodes.UpdateRequired, await response.ReadProblemCodeAsync(HttpStatusCode.UpgradeRequired));
+        var now = (await user.Client.SyncAsync(0)).Changes;
+        Assert.Empty(now.Subjects);
+        Assert.Empty(now.Topics);
+    }
+
+    private static SubjectDto Subject(string name, DateTimeOffset updatedAt) =>
         new() { Id = Guid.NewGuid(), UpdatedAt = updatedAt, Name = name, ColorHex = "#22AA88", DueTitle = "Final", DueAt = T0.AddDays(30), SortOrder = 1 };
 }

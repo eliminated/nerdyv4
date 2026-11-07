@@ -38,8 +38,10 @@ public sealed class NotificationService(ILogger<NotificationService> logger)
         _dispatcher = DispatcherQueue.GetForCurrentThread();
         try
         {
-            using (var key = Registry.CurrentUser.CreateSubKey($@"Software\Classes\AppUserModelId\{AppUserModelId}"))
+            // A test build with its own data folder leaves the registration (and its icon path) to the installed Nerdy.
+            if (!AppPaths.IsSeparate)
             {
+                using var key = Registry.CurrentUser.CreateSubKey($@"Software\Classes\AppUserModelId\{AppUserModelId}");
                 key.SetValue("DisplayName", "Nerdy");
                 key.SetValue("IconUri", Path.Combine(AppContext.BaseDirectory, "Assets", "NerdyLogo64.png"));
             }
